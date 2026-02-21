@@ -1,0 +1,11 @@
+# Sentinel Bloom
+
+Sentinel Bloom treats vision as an active field rather than a static frame: perception radiates outward, gathers context, and returns meaning in layers. Space is organized as a disciplined pulse system where rings, arcs, and focal cores imply scanning, listening, and memory. Every contour should feel meticulously crafted, with distances and alignments tuned so the icon reads instantly at small scale yet rewards close inspection with structural depth.
+
+Color is used as intelligence, not decoration. Deep nocturnal blues establish trust and calm precision, while electric cyan and warm amber become selective signal accents, suggesting detected events and interpreted relevance. Gradients should be painstakingly balanced so light appears to emerge from within the form. Surfaces must look master-level in their restraint: no accidental saturation spikes, no muddy transitions, only intentional chromatic tension shaped through countless refinements.
+
+Form language combines softness and rigor. Circular wavefronts communicate awareness in motion, while a central ocular geometry anchors intent and direction. The composition should imply that the system is always observing responsibly: attentive, contextual, and composed. Visual hierarchy must be executed with painstaking attention, using scale and contrast to guide the eye from environment to focus point in one fluent movement.
+
+Rhythm is built through measured repetition and interruption. Concentric structures create order, then subtle asymmetries introduce life and realism. Micro-details such as faint grain, halo diffusion, and edge falloff should appear deliberately hand-tuned, never automatic. The result must look meticulously crafted by someone with deep expertise, where each element feels labored over until the balance is exact.
+
+Typography, if present at all, is only a whisper and never the primary voice. Meaning lives in geometry, glow, and proportion. The final mark must feel like a refined instrument: calm under pressure, precise in uncertain environments, and unmistakably premium. Above all, it should carry the signature of master-level execution and the product of painstaking care, as if prepared for permanent display rather than quick consumption.

@@ -1,0 +1,549 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		214F2D9B2F3FDF690063539A /* ConversationMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2D9A2F3FDF690063539A /* ConversationMessage.swift */; };
+		214F2D9D2F3FDF7B0063539A /* VoiceInputService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2D9C2F3FDF7B0063539A /* VoiceInputService.swift */; };
+		214F2D9F2F400A8E0063539A /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2D9E2F400A8E0063539A /* HapticService.swift */; };
+		214F2DA12F400AE10063539A /* VehicleSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DA02F400AE10063539A /* VehicleSkill.swift */; };
+		214F2DA32F400B5D0063539A /* BarcodeSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DA22F400B5D0063539A /* BarcodeSkill.swift */; };
+		214F2DA52F400B950063539A /* PlantSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DA42F400B950063539A /* PlantSkill.swift */; };
+		214F2DA92F4012590063539A /* PlaceMemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DA82F4012590063539A /* PlaceMemoryService.swift */; };
+		214F2DAB2F4012640063539A /* UserContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DAA2F4012640063539A /* UserContextStore.swift */; };
+		214F2DAD2F40126C0063539A /* SmartNarrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DAC2F40126C0063539A /* SmartNarrationService.swift */; };
+		214F2DB32F401AA00063539A /* PriceLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB22F401AA00063539A /* PriceLookupService.swift */; };
+		214F2DB52F401D3F0063539A /* FaceMemoryService 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB42F401D3F0063539A /* FaceMemoryService 2.swift */; };
+		214F2DB72F40DF110063539A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB62F40DF110063539A /* ContentView.swift */; };
+		214F2DBB2F4164CE0063539A /* PrivacyWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DBA2F4164CE0063539A /* PrivacyWelcomeView.swift */; };
+		214F2DBD2F4165250063539A /* PrivacyDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DBC2F4165250063539A /* PrivacyDetailView.swift */; };
+		214F2DBE2F4166AA0063539A /* ScanDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DBF2F4166AA0063539A /* ScanDebugView.swift */; };
+		21B2B8D42F46218900EAD15C /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = 21B2B8D32F46218900EAD15C /* MWDATCamera */; };
+		21B2B8D62F46218900EAD15C /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = 21B2B8D52F46218900EAD15C /* MWDATCore */; };
+		21B2B8D82F46218900EAD15C /* MWDATMockDevice in Frameworks */ = {isa = PBXBuildFile; productRef = 21B2B8D72F46218900EAD15C /* MWDATMockDevice */; };
+		21B2B8DA2F46221D00EAD15C /* GlassesConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8D92F46221D00EAD15C /* GlassesConnectionState.swift */; };
+		21B2B8DC2F4625FE00EAD15C /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8DB2F4625FE00EAD15C /* SettingsManager.swift */; };
+		21B2B8DE2F464E3A00EAD15C /* MockGlassesTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8DD2F464E3A00EAD15C /* MockGlassesTestView.swift */; };
+		21B2B8E02F46883F00EAD15C /* test_glasses_capture.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 21B2B8DF2F46883F00EAD15C /* test_glasses_capture.jpg */; };
+		21B2B8E22F46946500EAD15C /* ScanHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8E12F46946500EAD15C /* ScanHistoryView.swift */; };
+		21B2B8E42F46946D00EAD15C /* OfflineVisionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8E32F46946D00EAD15C /* OfflineVisionService.swift */; };
+		21B2B8E62F46947800EAD15C /* LookoutShortcutsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8E52F46947800EAD15C /* LookoutShortcutsProvider.swift */; };
+		21B2B8EA2F46A3BE00EAD15C /* PreScanRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8E92F46A3BE00EAD15C /* PreScanRouter.swift */; };
+		21B2B8EE2F46A75800EAD15C /* PlaceSignalType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8ED2F46A75800EAD15C /* PlaceSignalType.swift */; };
+		21B2B8F02F478F3E00EAD15C /* LookoutColor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2B8EF2F478F3E00EAD15C /* LookoutColor.swift */; };
+		A100000001 /* LookoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000001 /* LookoutApp.swift */; };
+		A100000004 /* SkillModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000004 /* SkillModels.swift */; };
+		A100000005 /* AIVisionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000005 /* AIVisionService.swift */; };
+		A100000006 /* FlightSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000006 /* FlightSkill.swift */; };
+		A100000007 /* LandmarkSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000007 /* LandmarkSkill.swift */; };
+		A100000008 /* MusicSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000008 /* MusicSkill.swift */; };
+		A100000009 /* SkillRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000009 /* SkillRouter.swift */; };
+		A100000010 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000010 /* LocationManager.swift */; };
+		A100000011 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000011 /* SpeechService.swift */; };
+		A100000012 /* LookoutViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000012 /* LookoutViewModel.swift */; };
+		A100000013 /* CameraPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000013 /* CameraPreview.swift */; };
+		A100000014 /* ResultCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000014 /* ResultCardView.swift */; };
+		A100000015 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000015 /* SettingsView.swift */; };
+		A100000016 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016 /* HistoryView.swift */; };
+		A100000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000017 /* Assets.xcassets */; };
+		A100000018 /* ScanDebugTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000019 /* ScanDebugTrace.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		214F2D9A2F3FDF690063539A /* ConversationMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMessage.swift; sourceTree = "<group>"; };
+		214F2D9C2F3FDF7B0063539A /* VoiceInputService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputService.swift; sourceTree = "<group>"; };
+		214F2D9E2F400A8E0063539A /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
+		214F2DA02F400AE10063539A /* VehicleSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehicleSkill.swift; sourceTree = "<group>"; };
+		214F2DA22F400B5D0063539A /* BarcodeSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeSkill.swift; sourceTree = "<group>"; };
+		214F2DA42F400B950063539A /* PlantSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlantSkill.swift; sourceTree = "<group>"; };
+		214F2DA82F4012590063539A /* PlaceMemoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceMemoryService.swift; sourceTree = "<group>"; };
+		214F2DAA2F4012640063539A /* UserContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserContextStore.swift; sourceTree = "<group>"; };
+		214F2DAC2F40126C0063539A /* SmartNarrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNarrationService.swift; sourceTree = "<group>"; };
+		214F2DB22F401AA00063539A /* PriceLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceLookupService.swift; sourceTree = "<group>"; };
+		214F2DB42F401D3F0063539A /* FaceMemoryService 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceMemoryService 2.swift"; sourceTree = "<group>"; };
+		214F2DB62F40DF110063539A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		214F2DBA2F4164CE0063539A /* PrivacyWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyWelcomeView.swift; sourceTree = "<group>"; };
+		214F2DBC2F4165250063539A /* PrivacyDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyDetailView.swift; sourceTree = "<group>"; };
+		214F2DBF2F4166AA0063539A /* ScanDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDebugView.swift; sourceTree = "<group>"; };
+		21B2B8D92F46221D00EAD15C /* GlassesConnectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassesConnectionState.swift; sourceTree = "<group>"; };
+		21B2B8DB2F4625FE00EAD15C /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
+		21B2B8DD2F464E3A00EAD15C /* MockGlassesTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockGlassesTestView.swift; sourceTree = "<group>"; };
+		21B2B8DF2F46883F00EAD15C /* test_glasses_capture.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = test_glasses_capture.jpg; sourceTree = "<group>"; };
+		21B2B8E12F46946500EAD15C /* ScanHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanHistoryView.swift; sourceTree = "<group>"; };
+		21B2B8E32F46946D00EAD15C /* OfflineVisionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineVisionService.swift; sourceTree = "<group>"; };
+		21B2B8E52F46947800EAD15C /* LookoutShortcutsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookoutShortcutsProvider.swift; sourceTree = "<group>"; };
+		21B2B8E92F46A3BE00EAD15C /* PreScanRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreScanRouter.swift; sourceTree = "<group>"; };
+		21B2B8ED2F46A75800EAD15C /* PlaceSignalType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceSignalType.swift; sourceTree = "<group>"; };
+		21B2B8EF2F478F3E00EAD15C /* LookoutColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookoutColor.swift; sourceTree = "<group>"; };
+		B100000001 /* LookoutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookoutApp.swift; sourceTree = "<group>"; };
+		B100000004 /* SkillModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillModels.swift; sourceTree = "<group>"; };
+		B100000005 /* AIVisionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIVisionService.swift; sourceTree = "<group>"; };
+		B100000006 /* FlightSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightSkill.swift; sourceTree = "<group>"; };
+		B100000007 /* LandmarkSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandmarkSkill.swift; sourceTree = "<group>"; };
+		B100000008 /* MusicSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSkill.swift; sourceTree = "<group>"; };
+		B100000009 /* SkillRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillRouter.swift; sourceTree = "<group>"; };
+		B100000010 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		B100000011 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
+		B100000012 /* LookoutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookoutViewModel.swift; sourceTree = "<group>"; };
+		B100000013 /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
+		B100000014 /* ResultCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultCardView.swift; sourceTree = "<group>"; };
+		B100000015 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B100000016 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		B100000017 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B100000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B100000019 /* ScanDebugTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDebugTrace.swift; sourceTree = "<group>"; };
+		B100000099 /* Lookout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lookout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21B2B8D42F46218900EAD15C /* MWDATCamera in Frameworks */,
+				21B2B8D82F46218900EAD15C /* MWDATMockDevice in Frameworks */,
+				21B2B8D62F46218900EAD15C /* MWDATCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D100000001 = {
+			isa = PBXGroup;
+			children = (
+				D100000002 /* Lookout */,
+				D100000099 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D100000002 /* Lookout */ = {
+			isa = PBXGroup;
+			children = (
+				21B2B8EF2F478F3E00EAD15C /* LookoutColor.swift */,
+				21B2B8ED2F46A75800EAD15C /* PlaceSignalType.swift */,
+				21B2B8E92F46A3BE00EAD15C /* PreScanRouter.swift */,
+				21B2B8E52F46947800EAD15C /* LookoutShortcutsProvider.swift */,
+				B100000001 /* LookoutApp.swift */,
+				B100000018 /* Info.plist */,
+				B100000017 /* Assets.xcassets */,
+				D100000003 /* Models */,
+				D100000004 /* Views */,
+				D100000005 /* ViewModels */,
+				D100000006 /* Services */,
+				D100000007 /* Skills */,
+				21B2B8DF2F46883F00EAD15C /* test_glasses_capture.jpg */,
+			);
+			path = Lookout;
+			sourceTree = "<group>";
+		};
+		D100000003 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				21B2B8DB2F4625FE00EAD15C /* SettingsManager.swift */,
+				B100000004 /* SkillModels.swift */,
+				B100000019 /* ScanDebugTrace.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		D100000004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				21B2B8E12F46946500EAD15C /* ScanHistoryView.swift */,
+				21B2B8DD2F464E3A00EAD15C /* MockGlassesTestView.swift */,
+				214F2DBC2F4165250063539A /* PrivacyDetailView.swift */,
+				214F2DBA2F4164CE0063539A /* PrivacyWelcomeView.swift */,
+				214F2DBF2F4166AA0063539A /* ScanDebugView.swift */,
+				214F2DB62F40DF110063539A /* ContentView.swift */,
+				B100000013 /* CameraPreview.swift */,
+				B100000014 /* ResultCardView.swift */,
+				B100000015 /* SettingsView.swift */,
+				B100000016 /* HistoryView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		D100000005 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				B100000012 /* LookoutViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		D100000006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				21B2B8E32F46946D00EAD15C /* OfflineVisionService.swift */,
+				21B2B8D92F46221D00EAD15C /* GlassesConnectionState.swift */,
+				214F2DAC2F40126C0063539A /* SmartNarrationService.swift */,
+				214F2DAA2F4012640063539A /* UserContextStore.swift */,
+				214F2DA82F4012590063539A /* PlaceMemoryService.swift */,
+				214F2D9E2F400A8E0063539A /* HapticService.swift */,
+				214F2DB42F401D3F0063539A /* FaceMemoryService 2.swift */,
+				214F2D9C2F3FDF7B0063539A /* VoiceInputService.swift */,
+				214F2D9A2F3FDF690063539A /* ConversationMessage.swift */,
+				B100000005 /* AIVisionService.swift */,
+				B100000009 /* SkillRouter.swift */,
+				B100000010 /* LocationManager.swift */,
+				B100000011 /* SpeechService.swift */,
+				214F2DB22F401AA00063539A /* PriceLookupService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D100000007 /* Skills */ = {
+			isa = PBXGroup;
+			children = (
+				214F2DA02F400AE10063539A /* VehicleSkill.swift */,
+				214F2DA22F400B5D0063539A /* BarcodeSkill.swift */,
+				214F2DA42F400B950063539A /* PlantSkill.swift */,
+				B100000006 /* FlightSkill.swift */,
+				B100000007 /* LandmarkSkill.swift */,
+				B100000008 /* MusicSkill.swift */,
+			);
+			path = Skills;
+			sourceTree = "<group>";
+		};
+		D100000099 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B100000099 /* Lookout.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E100000001 /* Lookout */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F100000003 /* Build configuration list for PBXNativeTarget "Lookout" */;
+			buildPhases = (
+				C100000002 /* Sources */,
+				C100000001 /* Frameworks */,
+				C100000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Lookout;
+			productName = Lookout;
+			productReference = B100000099 /* Lookout.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E100000099 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					E100000001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = F100000001 /* Build configuration list for PBXProject "Lookout" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D100000001;
+			packageReferences = (
+				21B2B8D22F46218900EAD15C /* XCLocalSwiftPackageReference "../Downloads/meta-wearables-dat-ios-0.2.1" */,
+			);
+			productRefGroup = D100000099 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E100000001 /* Lookout */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C100000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21B2B8E02F46883F00EAD15C /* test_glasses_capture.jpg in Resources */,
+				A100000017 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C100000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				21B2B8DC2F4625FE00EAD15C /* SettingsManager.swift in Sources */,
+				214F2DBB2F4164CE0063539A /* PrivacyWelcomeView.swift in Sources */,
+				A100000001 /* LookoutApp.swift in Sources */,
+				A100000004 /* SkillModels.swift in Sources */,
+				A100000005 /* AIVisionService.swift in Sources */,
+				A100000006 /* FlightSkill.swift in Sources */,
+				21B2B8E22F46946500EAD15C /* ScanHistoryView.swift in Sources */,
+				214F2D9B2F3FDF690063539A /* ConversationMessage.swift in Sources */,
+				214F2DB52F401D3F0063539A /* FaceMemoryService 2.swift in Sources */,
+				214F2D9D2F3FDF7B0063539A /* VoiceInputService.swift in Sources */,
+				21B2B8E42F46946D00EAD15C /* OfflineVisionService.swift in Sources */,
+				21B2B8DE2F464E3A00EAD15C /* MockGlassesTestView.swift in Sources */,
+				21B2B8EA2F46A3BE00EAD15C /* PreScanRouter.swift in Sources */,
+				A100000007 /* LandmarkSkill.swift in Sources */,
+				A100000008 /* MusicSkill.swift in Sources */,
+				A100000009 /* SkillRouter.swift in Sources */,
+				214F2DB32F401AA00063539A /* PriceLookupService.swift in Sources */,
+				214F2DA52F400B950063539A /* PlantSkill.swift in Sources */,
+				A100000010 /* LocationManager.swift in Sources */,
+				214F2DB72F40DF110063539A /* ContentView.swift in Sources */,
+				214F2DBD2F4165250063539A /* PrivacyDetailView.swift in Sources */,
+				214F2DBE2F4166AA0063539A /* ScanDebugView.swift in Sources */,
+				214F2DA12F400AE10063539A /* VehicleSkill.swift in Sources */,
+				A100000011 /* SpeechService.swift in Sources */,
+				A100000012 /* LookoutViewModel.swift in Sources */,
+				21B2B8E62F46947800EAD15C /* LookoutShortcutsProvider.swift in Sources */,
+				214F2DA32F400B5D0063539A /* BarcodeSkill.swift in Sources */,
+				214F2DAD2F40126C0063539A /* SmartNarrationService.swift in Sources */,
+				214F2DAB2F4012640063539A /* UserContextStore.swift in Sources */,
+				214F2DA92F4012590063539A /* PlaceMemoryService.swift in Sources */,
+				A100000013 /* CameraPreview.swift in Sources */,
+				21B2B8DA2F46221D00EAD15C /* GlassesConnectionState.swift in Sources */,
+				A100000014 /* ResultCardView.swift in Sources */,
+				21B2B8F02F478F3E00EAD15C /* LookoutColor.swift in Sources */,
+				A100000015 /* SettingsView.swift in Sources */,
+				A100000016 /* HistoryView.swift in Sources */,
+				21B2B8EE2F46A75800EAD15C /* PlaceSignalType.swift in Sources */,
+				A100000018 /* ScanDebugTrace.swift in Sources */,
+				214F2D9F2F400A8E0063539A /* HapticService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		G100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = RV3V5935AF;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		G100000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = RV3V5935AF;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		G100000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Lookout/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lookout;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lookout.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		G100000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Lookout/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Lookout;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lookout.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		F100000001 /* Build configuration list for PBXProject "Lookout" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				G100000001 /* Debug */,
+				G100000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F100000003 /* Build configuration list for PBXNativeTarget "Lookout" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				G100000003 /* Debug */,
+				G100000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		21B2B8D22F46218900EAD15C /* XCLocalSwiftPackageReference "../Downloads/meta-wearables-dat-ios-0.2.1" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../Downloads/meta-wearables-dat-ios-0.2.1";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		21B2B8D32F46218900EAD15C /* MWDATCamera */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MWDATCamera;
+		};
+		21B2B8D52F46218900EAD15C /* MWDATCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MWDATCore;
+		};
+		21B2B8D72F46218900EAD15C /* MWDATMockDevice */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MWDATMockDevice;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E100000099 /* Project object */;
+}
