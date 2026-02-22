@@ -90,26 +90,30 @@ struct ContentView: View {
                 }
 
                 Spacer()
-                if viewModel.showResult { resultAndConversationArea }
+                if viewModel.isAudioOnlyMode {
+                    audioOnlyOverlay
+                } else if viewModel.showResult {
+                    resultAndConversationArea
+                }
                 Spacer()
-                bottomControls
+                if !viewModel.isAudioOnlyMode { bottomControls }
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.isOfflineMode)
         .animation(.easeInOut(duration: 0.3), value: viewModel.glassesService.connectionState == .error)
 
             // MARK: - Viewfinder Reticle
-            if !viewModel.showResult {
+            if !viewModel.isAudioOnlyMode && !viewModel.showResult {
                 ScanReticleView(isScanning: viewModel.isCapturing)
             }
 
             // Voice recording overlay
-            if viewModel.isAskingFollowUp { voiceRecordingOverlay }
+            if !viewModel.isAudioOnlyMode && viewModel.isAskingFollowUp { voiceRecordingOverlay }
 
             // Face naming overlay
-            if viewModel.showFaceNaming { faceNamingOverlay }
+            if !viewModel.isAudioOnlyMode && viewModel.showFaceNaming { faceNamingOverlay }
 
             // Face detection badges
-            if viewModel.showResult && !viewModel.currentFaceMatches.isEmpty {
+            if !viewModel.isAudioOnlyMode && viewModel.showResult && !viewModel.currentFaceMatches.isEmpty {
                 VStack {
                     HStack {
                         Spacer()
@@ -159,6 +163,66 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
             orbPhase = 1
         }
+    }
+
+    // MARK: - Audio-Only Glasses Overlay
+    private var audioOnlyOverlay: some View {
+        VStack(spacing: 16) {
+            switch viewModel.glassesFlowState {
+            case .scanning:
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.5)
+                Text("Analyzing...")
+                    .font(.headline)
+                    .foregroundStyle(.cyan)
+            case .speakingResult, .speakingFollowUp:
+                Image(systemName: "speaker.wave.3.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .symbolEffect(.variableColor.iterative)
+                Text("Speaking...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            case .listeningForFollowUp:
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.red)
+                    .symbolEffect(.pulse)
+                Text("Listening...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text("Ask a follow-up or wait to return")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+            case .processingFollowUp:
+                ProgressView()
+                    .tint(.white)
+                Text("Thinking...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            case .cooldown:
+                Text("Returning to standby...")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+            case .idle:
+                Image(systemName: "eyeglasses")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.white.opacity(0.6))
+                Text("Glasses Active")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text("Say \"\(settings.glassesTriggerPhrase)\" to scan")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+                if viewModel.isCapturing {
+                    ProgressView()
+                        .tint(.white)
+                        .padding(.top, 8)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: viewModel.glassesFlowState.rawValue)
     }
 
     // MARK: - Atmospheric Overlay (category-reactive orbs)

@@ -94,6 +94,9 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     var voiceEngine: VoiceEngine = .apple
     var elevenLabsAPIKey: String = ""
     var elevenLabsVoiceId: String = ElevenLabsVoice.presets.first?.id ?? ""
+
+    /// One-shot callback fired when TTS finishes (Apple or ElevenLabs)
+    var onSpeechFinished: (() -> Void)?
     
     override init() {
         super.init()
@@ -135,12 +138,18 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     func speak(_ text: String) {
         guard !text.isEmpty else { return }
         stop()
-        
+
         if voiceEngine == .elevenLabs && !elevenLabsAPIKey.isEmpty {
             speakWithElevenLabs(text)
         } else {
             speakWithApple(text)
         }
+    }
+
+    /// Speak with a one-shot completion callback
+    func speak(_ text: String, onFinished: (() -> Void)?) {
+        self.onSpeechFinished = onFinished
+        speak(text)
     }
     
     func speakSegments(_ segments: [String]) {
@@ -323,6 +332,9 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
             if !synthesizer.isSpeaking {
                 isSpeaking = false
                 try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                let callback = self.onSpeechFinished
+                self.onSpeechFinished = nil
+                callback?()
             }
         }
     }
@@ -477,6 +489,9 @@ extension SpeechService: AVAudioPlayerDelegate {
         Task { @MainActor in
             isSpeaking = false
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            let callback = self.onSpeechFinished
+            self.onSpeechFinished = nil
+            callback?()
         }
     }
     
