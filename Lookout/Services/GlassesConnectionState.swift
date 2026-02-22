@@ -394,6 +394,7 @@ class GlassesService: ObservableObject {
         isGlassesConnected = false
         deviceName = nil
         connectionAttemptInfo = nil
+        cameraPermissionGranted = false
     }
 
     // MARK: - Device Discovery
@@ -423,6 +424,9 @@ class GlassesService: ObservableObject {
                     #if DEBUG
                     print("🕶️ Glasses connected: \(deviceName ?? "unknown")")
                     #endif
+
+                    // Auto-start the stream session so captures work immediately
+                    startStreamSession()
                 } else {
                     // Empty device list — glasses not yet in range (or just disconnected).
                     // Don't retreat to .searching (which re-launches the Meta AI OAuth flow);
@@ -506,103 +510,167 @@ class GlassesService: ObservableObject {
         connect()
     }
 
+    // MARK: - Stream Session Management
+    //
+    // Following the official Meta sample app pattern:
+    // 1. Create the StreamSession once after glasses connect
+    // 2. Start it once, keep it running
+    // 3. Call capturePhoto() on the existing session when needed
+    // 4. Don't stop/recreate the session for each capture
+
+    private var cameraPermissionGranted = false
+
+    /// Ensures camera permission is granted. Returns true if permission is good.
+    /// Only opens the Meta AI permission prompt the first time.
+    private func ensureCameraPermission() async -> Bool {
+        #if canImport(MWDATCore)
+        if cameraPermissionGranted { return true }
+
+        do {
+            let status = try await wearables.checkPermissionStatus(.camera)
+            #if DEBUG
+            print("🕶️ Camera permission status: \(status)")
+            #endif
+
+            if status == .granted {
+                cameraPermissionGranted = true
+                return true
+            }
+
+            #if DEBUG
+            print("🕶️ Requesting camera permission — this may open Meta AI app...")
+            #endif
+            let requestStatus = try await wearables.requestPermission(.camera)
+            #if DEBUG
+            print("🕶️ Camera permission request result: \(requestStatus)")
+            #endif
+
+            if requestStatus == .granted {
+                cameraPermissionGranted = true
+                return true
+            }
+
+            lastError = "Camera permission denied. Open Meta AI app and grant camera access for Lookout."
+            return false
+        } catch {
+            lastError = "Camera permission needed. Approve camera access in the Meta AI app."
+            #if DEBUG
+            print("🕶️ Permission error: \(error)")
+            #endif
+            return false
+        }
+        #else
+        return false
+        #endif
+    }
+
+    /// Sets up and starts the persistent stream session after glasses connect.
+    /// Call this once after connection + permission are established.
+    func startStreamSession() {
+        #if canImport(MWDATCore) && canImport(MWDATCamera)
+        // Don't start a new session if one is already running
+        if streamSession != nil {
+            #if DEBUG
+            print("🕶️ Stream session already exists — skipping setup")
+            #endif
+            return
+        }
+
+        Task { @MainActor in
+            guard await ensureCameraPermission() else { return }
+
+            #if DEBUG
+            print("🕶️ Starting persistent stream session...")
+            #endif
+
+            let selector = AutoDeviceSelector(wearables: wearables)
+            let config = StreamSessionConfig(
+                videoCodec: .raw,
+                resolution: .low,
+                frameRate: 24
+            )
+            let session = StreamSession(streamSessionConfig: config, deviceSelector: selector)
+            self.streamSession = session
+            self.deviceSelector = selector
+
+            // Listen for photos captured from the glasses
+            photoDataListenerToken = session.photoDataPublisher.listen { [weak self] photoData in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    #if DEBUG
+                    print("🕶️ Photo captured from glasses (\(photoData.data.count) bytes)")
+                    #endif
+                    if let image = UIImage(data: photoData.data),
+                       let jpegData = image.jpegData(compressionQuality: 0.7) {
+                        self.onPhotoCaptured?(jpegData)
+                    } else {
+                        self.onPhotoCaptured?(photoData.data)
+                    }
+                    // Don't stop the session — keep it alive for future captures
+                }
+            }
+
+            // Track session state
+            stateListenerToken = session.statePublisher.listen { [weak self] state in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    #if DEBUG
+                    print("🕶️ Stream session state: \(state)")
+                    #endif
+                    switch state {
+                    case .streaming:
+                        self.connectionState = .streaming
+                    case .stopped:
+                        self.connectionState = self.isGlassesConnected ? .connected : .disconnected
+                    default:
+                        break
+                    }
+                }
+            }
+
+            // Handle stream errors
+            errorListenerToken = session.errorPublisher.listen { [weak self] error in
+                Task { @MainActor [weak self] in
+                    #if DEBUG
+                    print("🕶️ Stream error: \(error)")
+                    #endif
+                    // Don't overwrite the connection state — just log it
+                }
+            }
+
+            await session.start()
+            #if DEBUG
+            print("🕶️ Stream session started — ready for photo captures")
+            #endif
+        }
+        #endif
+    }
+
     // MARK: - Photo Capture
 
     func capturePhoto() {
         #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task { @MainActor in
-            do {
-                // Check and request camera permission on the glasses
+            // If no stream session yet, start one first
+            if streamSession == nil {
                 #if DEBUG
-                print("🕶️ Checking glasses camera permission...")
+                print("🕶️ No stream session — starting one before capture...")
                 #endif
-                let status = try await wearables.checkPermissionStatus(.camera)
-                #if DEBUG
-                print("🕶️ Camera permission status: \(status)")
-                #endif
-
-                if status != .granted {
-                    #if DEBUG
-                    print("🕶️ Requesting camera permission — this may open Meta AI app...")
-                    #endif
-                    let requestStatus = try await wearables.requestPermission(.camera)
-                    #if DEBUG
-                    print("🕶️ Camera permission request result: \(requestStatus)")
-                    #endif
-                    guard requestStatus == .granted else {
-                        lastError = "Camera permission denied. Open Meta AI app and grant camera access for Lookout."
-                        return
-                    }
-                }
-
-                #if DEBUG
-                print("🕶️ Camera permission granted — starting stream session...")
-                #endif
-
-                let selector = AutoDeviceSelector(wearables: wearables)
-                let config = StreamSessionConfig(
-                    videoCodec: .raw,
-                    resolution: .low,
-                    frameRate: 24
-                )
-                let session = StreamSession(streamSessionConfig: config, deviceSelector: selector)
-                self.streamSession = session
-                self.deviceSelector = selector
-
-                photoDataListenerToken = session.photoDataPublisher.listen { [weak self] photoData in
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        #if DEBUG
-                        print("🕶️ Photo captured from glasses (\(photoData.data.count) bytes)")
-                        #endif
-                        if let image = UIImage(data: photoData.data),
-                           let jpegData = image.jpegData(compressionQuality: 0.7) {
-                            self.onPhotoCaptured?(jpegData)
-                        } else {
-                            self.onPhotoCaptured?(photoData.data)
-                        }
-                        await session.stop()
-                    }
-                }
-
-                stateListenerToken = session.statePublisher.listen { [weak self] state in
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        #if DEBUG
-                        print("🕶️ Stream session state: \(state)")
-                        #endif
-                        switch state {
-                        case .streaming:
-                            session.capturePhoto(format: .jpeg)
-                            self.connectionState = .streaming
-                        case .stopped:
-                            self.connectionState = self.isGlassesConnected ? .connected : .disconnected
-                        default:
-                            break
-                        }
-                    }
-                }
-
-                errorListenerToken = session.errorPublisher.listen { [weak self] error in
-                    Task { @MainActor [weak self] in
-                        self?.lastError = "Streaming error: check camera permission in Meta AI app"
-                        #if DEBUG
-                        print("🕶️ Stream error: \(error)")
-                        #endif
-                    }
-                }
-
-                await session.start()
-
-            } catch {
-                // PermissionError from checkPermissionStatus or requestPermission
-                // means we need to approve camera access in the Meta AI app
-                lastError = "Camera permission needed. Approve camera access in the Meta AI app."
-                #if DEBUG
-                print("🕶️ Capture error: \(error)")
-                print("🕶️ This likely means camera permission needs to be granted in the Meta AI app")
-                #endif
+                guard await ensureCameraPermission() else { return }
+                startStreamSession()
+                // Wait a moment for the session to start streaming
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
+
+            guard let session = streamSession else {
+                lastError = "Stream session not available"
+                return
+            }
+
+            #if DEBUG
+            print("🕶️ Capturing photo from glasses...")
+            #endif
+            session.capturePhoto(format: .jpeg)
         }
         #else
         lastError = "Meta Wearables SDK not available"
