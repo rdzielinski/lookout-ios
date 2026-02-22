@@ -73,6 +73,12 @@ class GlassesService: ObservableObject {
     private let connectionTimeoutSeconds: UInt64 = 15  // seconds before retry
     @Published var connectionAttemptInfo: String?  // status detail for UI
 
+    // Track whether we've ever reached .registered in this connect() session,
+    // so we can distinguish "SDK flickering on startup" from "registration lost"
+    private var hasEverRegistered = false
+    private var registrationAutoRetryCount = 0
+    private let maxRegistrationAutoRetries = 2
+
     // Voice trigger config
     var triggerPhrase = "lookout"
     var triggerEnabled = true
@@ -144,8 +150,17 @@ class GlassesService: ObservableObject {
         connectionState = .searching
         lastError = nil
         connectionAttemptInfo = nil
+        hasEverRegistered = false
+        registrationAutoRetryCount = 0
 
-        // Listen on the registration stream for async state changes
+        // Cancel any previous tasks
+        registrationTask?.cancel()
+        deviceStreamTask?.cancel()
+        connectionTimeoutTask?.cancel()
+
+        // Listen on the registration stream for async state changes.
+        // The SDK often flickers through states on startup (0→2→3→0→1),
+        // so we track whether we've ever hit .registered and react accordingly.
         registrationTask = Task { @MainActor in
             for await regState in wearables.registrationStateStream() {
                 #if DEBUG
@@ -153,20 +168,74 @@ class GlassesService: ObservableObject {
                 #endif
                 switch regState {
                 case .registered:
+                    hasEverRegistered = true
+                    registrationAutoRetryCount = 0
                     connectionState = .connecting
                     setupDeviceStream()
+
                 case .registering:
-                    connectionState = .searching
+                    // SDK is in the process of registering — just wait
+                    if connectionState != .connecting {
+                        connectionState = .searching
+                    }
+
                 case .available:
+                    // "Available" means the SDK is ready for registration but not registered.
+                    // If we previously were registered and dropped here, or if the SDK
+                    // settled here after startup flickering, auto-trigger registration.
                     #if DEBUG
-                    print("🕶️ Registration state: available — waiting for user to complete pairing")
+                    print("🕶️ Registration state: available — will auto-trigger startRegistration()")
                     #endif
+
+                    // Cancel device stream if it was running (registration was lost)
+                    if hasEverRegistered {
+                        deviceStreamTask?.cancel()
+                        connectionTimeoutTask?.cancel()
+                        isGlassesConnected = false
+                        #if DEBUG
+                        print("🕶️ Registration lost after being registered — cancelling device stream")
+                        #endif
+                    }
+
+                    if registrationAutoRetryCount < maxRegistrationAutoRetries {
+                        registrationAutoRetryCount += 1
+                        connectionState = .searching
+                        #if DEBUG
+                        print("🕶️ Auto-retry registration (\(registrationAutoRetryCount)/\(maxRegistrationAutoRetries))")
+                        #endif
+                        Task {
+                            do {
+                                try await wearables.startRegistration()
+                            } catch {
+                                #if DEBUG
+                                print("🕶️ startRegistration() error: \(error)")
+                                #endif
+                            }
+                        }
+                    } else {
+                        connectionState = .error
+                        lastError = "Registration did not complete. Open the Meta AI app and make sure your glasses are paired there."
+                    }
+
                 case .unavailable:
-                    connectionState = .error
-                    lastError = "Glasses registration unavailable. Check that Meta AI app is installed."
+                    // On startup the SDK briefly emits .unavailable before settling.
+                    // Don't immediately error out — give it a chance to advance.
                     #if DEBUG
                     print("🕶️ Registration state: unavailable")
                     #endif
+
+                    if hasEverRegistered {
+                        // Was registered, now unavailable — cancel device stream
+                        deviceStreamTask?.cancel()
+                        connectionTimeoutTask?.cancel()
+                        isGlassesConnected = false
+                        connectionState = .searching
+                        #if DEBUG
+                        print("🕶️ Registration lost (unavailable) — waiting for SDK to recover...")
+                        #endif
+                    }
+                    // If we've never registered, just wait — the SDK is still starting up
+
                 @unknown default:
                     #if DEBUG
                     print("🕶️ Unknown registration state: rawValue \(regState.rawValue)")
@@ -181,26 +250,24 @@ class GlassesService: ObservableObject {
 
         if wearables.registrationState == .registered {
             // Already paired — go straight to device discovery
+            hasEverRegistered = true
             connectionState = .connecting
             setupDeviceStream()
         } else {
             // Not yet paired — launch Meta AI for OAuth pairing.
-            // When the user finishes pairing and is redirected back, iOS calls
-            // LookoutApp.onOpenURL → Wearables.shared.handleUrl(url).
-            // The registrationStateStream above should then emit .registered,
-            // BUT in practice the stream event can be missed when the app is
-            // backgrounded. We therefore also install a foreground observer
-            // that synchronously re-checks registrationState the moment the
-            // app becomes active again — this reliably catches the post-OAuth
-            // return trip.
+            // The registrationStateStream above handles state transitions,
+            // but we also install a foreground observer as a backup for when
+            // the app returns from the Meta AI OAuth flow.
             installForegroundRegistrationCheck()
 
             Task {
                 do {
                     try await wearables.startRegistration()
                 } catch {
-                    connectionState = .error
-                    lastError = error.localizedDescription
+                    #if DEBUG
+                    print("🕶️ startRegistration() error: \(error)")
+                    #endif
+                    // Don't immediately error — the registration stream may still advance
                 }
             }
         }
@@ -434,6 +501,8 @@ class GlassesService: ObservableObject {
         connectionRetryCount = 0
         connectionAttemptInfo = nil
         lastError = nil
+        hasEverRegistered = false
+        registrationAutoRetryCount = 0
         connect()
     }
 
