@@ -41,6 +41,32 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 topBar
 
+                // Glasses connection error banner
+                if settings.glassesMode && viewModel.glassesService.connectionState == .error,
+                   let errorMsg = viewModel.glassesService.lastError {
+                    HStack(spacing: 8) {
+                        Image(systemName: "eyeglasses").font(.caption)
+                        Text(errorMsg).font(.caption2).lineLimit(2)
+                        Spacer()
+                        Button {
+                            viewModel.glassesService.retryConnection()
+                        } label: {
+                            Text("Retry")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 4)
+                                .background(.white.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(.red.opacity(0.85))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 6)
+                }
+
                 if viewModel.isOfflineMode {
                     HStack(spacing: 6) {
                         Image(systemName: "wifi.slash").font(.caption)
@@ -60,6 +86,7 @@ struct ContentView: View {
                 bottomControls
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.isOfflineMode)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.glassesService.connectionState == .error)
 
             // MARK: - Viewfinder Reticle
             if !viewModel.showResult {
@@ -189,8 +216,33 @@ struct ContentView: View {
                     if settings.glassesMode {
                         HStack(spacing: 4) {
                             Image(systemName: "eyeglasses").font(.caption2).foregroundStyle(glassesStatusColor)
-                            Text(viewModel.glassesService.connectionState.rawValue)
-                                .font(.caption2).foregroundStyle(glassesStatusColor)
+
+                            if viewModel.glassesService.connectionState == .error {
+                                // Show error + tappable retry
+                                Button {
+                                    viewModel.glassesService.retryConnection()
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Text("Failed")
+                                            .font(.caption2).foregroundStyle(.red)
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.red)
+                                    }
+                                }
+                            } else if let attemptInfo = viewModel.glassesService.connectionAttemptInfo,
+                                      viewModel.glassesService.connectionState == .connecting {
+                                // Show "Connecting... Attempt 2 of 4"
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(viewModel.glassesService.connectionState.rawValue)
+                                        .font(.caption2).foregroundStyle(glassesStatusColor)
+                                    Text(attemptInfo)
+                                        .font(.system(size: 8)).foregroundStyle(.orange.opacity(0.7))
+                                }
+                            } else {
+                                Text(viewModel.glassesService.connectionState.rawValue)
+                                    .font(.caption2).foregroundStyle(glassesStatusColor)
+                            }
                         }
                     } else {
                         Text(settings.selectedProvider.rawValue)
