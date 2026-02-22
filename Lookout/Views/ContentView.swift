@@ -49,6 +49,15 @@ struct ContentView: View {
                         Text(errorMsg).font(.caption2).lineLimit(2)
                         Spacer()
                         Button {
+                            GlassesService.openBluetoothSettings()
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(.white.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                        Button {
                             viewModel.glassesService.retryConnection()
                         } label: {
                             Text("Retry")
@@ -127,7 +136,7 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showSettings) { SettingsView(glassesService: viewModel.glassesService) }
         .sheet(isPresented: $showHistory) { ScanHistoryView(viewModel: viewModel) }
         .sheet(isPresented: $showSavePlace) { savePlaceSheet }
         .sheet(isPresented: $showDebugTrace) { ScanDebugView(trace: viewModel.latestDebugTrace) }

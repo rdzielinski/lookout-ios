@@ -359,6 +359,13 @@ class GlassesService: ObservableObject {
     }
     #endif
 
+    /// Opens iOS Bluetooth settings so the user can verify pairing at the OS level.
+    static func openBluetoothSettings() {
+        if let url = URL(string: "App-Prefs:root=Bluetooth") {
+            UIApplication.shared.open(url)
+        }
+    }
+
     /// Manually retry the glasses connection (called from UI retry button)
     func retryConnection() {
         connectionRetryCount = 0
