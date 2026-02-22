@@ -148,17 +148,36 @@ class GlassesService: ObservableObject {
         // Listen on the registration stream for async state changes
         registrationTask = Task { @MainActor in
             for await regState in wearables.registrationStateStream() {
+                #if DEBUG
+                print("🕶️ Registration stream emitted: \(regState) (rawValue: \(regState.rawValue))")
+                #endif
                 switch regState {
                 case .registered:
                     connectionState = .connecting
                     setupDeviceStream()
                 case .registering:
                     connectionState = .searching
+                case .available:
+                    #if DEBUG
+                    print("🕶️ Registration state: available — waiting for user to complete pairing")
+                    #endif
+                case .unavailable:
+                    connectionState = .error
+                    lastError = "Glasses registration unavailable. Check that Meta AI app is installed."
+                    #if DEBUG
+                    print("🕶️ Registration state: unavailable")
+                    #endif
                 @unknown default:
-                    break
+                    #if DEBUG
+                    print("🕶️ Unknown registration state: rawValue \(regState.rawValue)")
+                    #endif
                 }
             }
         }
+
+        #if DEBUG
+        print("🕶️ connect() called — current registration state: \(wearables.registrationState) (rawValue: \(wearables.registrationState.rawValue))")
+        #endif
 
         if wearables.registrationState == .registered {
             // Already paired — go straight to device discovery
@@ -192,10 +211,10 @@ class GlassesService: ObservableObject {
     }
 
     #if canImport(MWDATCore)
-    /// Installs a one-shot UIApplication.didBecomeActiveNotification observer
-    /// so that if the registrationStateStream misses the .registered event while
-    /// the app was backgrounded (the typical OAuth redirect scenario), we still
-    /// advance the state machine as soon as the user returns to Lookout.
+    /// Installs a persistent UIApplication.didBecomeActiveNotification observer
+    /// that checks registration state every time the app becomes active.
+    /// This catches the post-OAuth redirect AND handles cases where the SDK
+    /// is still in `.registering` state and needs a moment to settle.
     private func installForegroundRegistrationCheck() {
         // Remove any previous observer to avoid duplicates
         if let existing = foregroundObserver {
@@ -210,28 +229,72 @@ class GlassesService: ObservableObject {
         ) { [weak self] _ in
             guard let self else { return }
 
-            // Tear down synchronously so subsequent foreground events don't re-fire.
-            // (The Task below is async; removing here prevents duplicate executions.)
-            if let obs = self.foregroundObserver {
-                NotificationCenter.default.removeObserver(obs)
-                self.foregroundObserver = nil
-            }
-
             Task { @MainActor [weak self] in
                 guard let self else { return }
 
+                let currentRegState = self.wearables.registrationState
+
                 #if DEBUG
-                print("🕶️ App became active — checking registration state: \(self.wearables.registrationState)")
+                print("🕶️ App became active — registration state: \(currentRegState) (rawValue: \(currentRegState.rawValue)), connection state: \(self.connectionState)")
                 #endif
 
-                // Only act if we are still waiting (searching) and now registered
-                guard self.connectionState == .searching,
-                      self.wearables.registrationState == .registered else { return }
+                // Only act if we are still waiting for registration
+                guard self.connectionState == .searching else { return }
 
-                // We are registered — advance to device discovery
-                self.connectionState = .connecting
-                self.setupDeviceStream()
+                if currentRegState == .registered {
+                    // Registered — advance to device discovery
+                    self.connectionState = .connecting
+                    self.setupDeviceStream()
+                    self.removeForegroundObserver()
+                } else if currentRegState == .registering {
+                    // Still registering — the SDK may need a moment after returning
+                    // from Meta AI. Poll a few times with a short delay.
+                    #if DEBUG
+                    print("🕶️ Still registering — will poll for completion...")
+                    #endif
+                    self.pollRegistrationState()
+                }
             }
+        }
+    }
+
+    /// Polls the registration state a few times after returning from Meta AI,
+    /// since the SDK may take a moment to transition from .registering → .registered.
+    private func pollRegistrationState() {
+        Task { @MainActor [weak self] in
+            for attempt in 1...6 {
+                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s between checks
+                guard let self, self.connectionState == .searching else { return }
+
+                let state = self.wearables.registrationState
+
+                #if DEBUG
+                print("🕶️ Registration poll \(attempt)/6 — state: \(state) (rawValue: \(state.rawValue))")
+                #endif
+
+                if state == .registered {
+                    self.connectionState = .connecting
+                    self.setupDeviceStream()
+                    self.removeForegroundObserver()
+                    return
+                }
+            }
+
+            // After 12 seconds of polling, still not registered
+            guard let self, self.connectionState == .searching else { return }
+            #if DEBUG
+            print("🕶️ Registration polling exhausted — still not registered")
+            #endif
+            self.connectionState = .error
+            self.lastError = "Registration with Meta AI did not complete. Try opening the Meta AI app and pairing your glasses there first."
+        }
+    }
+
+    /// Removes the foreground observer (called after successful registration)
+    private func removeForegroundObserver() {
+        if let obs = foregroundObserver {
+            NotificationCenter.default.removeObserver(obs)
+            foregroundObserver = nil
         }
     }
     #endif
