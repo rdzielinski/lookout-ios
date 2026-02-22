@@ -39,6 +39,14 @@ class GlassesService: ObservableObject {
     // MARK: - Callbacks
     var onPhotoCaptured: ((Data) -> Void)?
     var onVoiceTriggerDetected: (() -> Void)?
+    var onCameraButtonCaptured: ((Data) -> Void)?
+
+    /// When true, the next photo from photoDataPublisher was requested programmatically
+    /// (via `capturePhoto()`). When false, it came from the hardware camera button.
+    private var expectingProgrammaticCapture = false
+
+    /// Whether the hardware camera button should trigger Lookout scans
+    var cameraButtonEnabled = true
 
     // MARK: - Private — SDK objects
     #if canImport(MWDATCore)
@@ -140,6 +148,24 @@ class GlassesService: ObservableObject {
             }
         }
         mockObservers.append(photoObserver)
+
+        let cameraButtonObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("mockGlassesCameraButton"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor [weak self] in
+                guard let self,
+                      let imageData = notification.userInfo?["imageData"] as? Data else { return }
+                print("🕶️ Mock camera button capture received (\(imageData.count) bytes)")
+                if self.cameraButtonEnabled {
+                    self.onCameraButtonCaptured?(imageData)
+                } else {
+                    print("🕶️ Mock camera button ignored (disabled in settings)")
+                }
+            }
+        }
+        mockObservers.append(cameraButtonObserver)
     }
     #endif
 
@@ -594,17 +620,41 @@ class GlassesService: ObservableObject {
             self.deviceSelector = selector
 
             // Listen for photos captured from the glasses
+            // Photos can come from two sources:
+            // 1. Programmatic: capturePhoto() was called (voice trigger / app-initiated)
+            // 2. Hardware: user pressed the camera button on the glasses
             photoDataListenerToken = session.photoDataPublisher.listen { [weak self] photoData in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    #if DEBUG
-                    print("🕶️ Photo captured from glasses (\(photoData.data.count) bytes)")
-                    #endif
+
+                    let wasProgrammatic = self.expectingProgrammaticCapture
+                    self.expectingProgrammaticCapture = false
+
+                    let jpegData: Data
                     if let image = UIImage(data: photoData.data),
-                       let jpegData = image.jpegData(compressionQuality: 0.7) {
+                       let compressed = image.jpegData(compressionQuality: 0.7) {
+                        jpegData = compressed
+                    } else {
+                        jpegData = photoData.data
+                    }
+
+                    if wasProgrammatic {
+                        #if DEBUG
+                        print("🕶️ Photo captured (programmatic) — \(jpegData.count) bytes")
+                        #endif
                         self.onPhotoCaptured?(jpegData)
                     } else {
-                        self.onPhotoCaptured?(photoData.data)
+                        // Hardware camera button press
+                        #if DEBUG
+                        print("🕶️ Photo captured (camera button) — \(jpegData.count) bytes")
+                        #endif
+                        if self.cameraButtonEnabled {
+                            self.onCameraButtonCaptured?(jpegData)
+                        } else {
+                            #if DEBUG
+                            print("🕶️ Camera button capture ignored (disabled in settings)")
+                            #endif
+                        }
                     }
                     // Don't stop the session — keep it alive for future captures
                 }
@@ -668,8 +718,9 @@ class GlassesService: ObservableObject {
             }
 
             #if DEBUG
-            print("🕶️ Capturing photo from glasses...")
+            print("🕶️ Capturing photo from glasses (programmatic)...")
             #endif
+            expectingProgrammaticCapture = true
             session.capturePhoto(format: .jpeg)
         }
         #else

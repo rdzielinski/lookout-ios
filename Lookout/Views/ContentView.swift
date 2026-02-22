@@ -212,9 +212,19 @@ struct ContentView: View {
                 Text("Glasses Active")
                     .font(.headline)
                     .foregroundStyle(.white)
-                Text("Say \"\(settings.glassesTriggerPhrase)\" to scan")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
+                if settings.glassesCameraButtonEnabled && settings.glassesAutoListen {
+                    Text("Press camera button or say \"\(settings.glassesTriggerPhrase)\"")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                } else if settings.glassesCameraButtonEnabled {
+                    Text("Press camera button to scan")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                } else {
+                    Text("Say \"\(settings.glassesTriggerPhrase)\" to scan")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
                 if viewModel.isCapturing {
                     ProgressView()
                         .tint(.white)

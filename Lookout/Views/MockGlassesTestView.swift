@@ -145,10 +145,14 @@ struct MockGlassesTestView: View {
                         Button("Simulate Photo Capture") {
                             viewModel.simulatePhotoCapture()
                         }
+
+                        Button("Simulate Camera Button Press") {
+                            viewModel.simulateCameraButton()
+                        }
                     } header: {
                         Text("Simulate Actions")
                     } footer: {
-                        Text("Test the glasses pipeline without actual voice or camera input. Make sure Glasses Mode is enabled in Settings.")
+                        Text("Test the glasses pipeline without actual voice or camera input. Voice Trigger simulates saying the trigger phrase. Photo Capture simulates a programmatic capture. Camera Button simulates pressing the hardware camera button. Make sure Glasses Mode is enabled in Settings.")
                     }
                 }
                 
@@ -353,7 +357,31 @@ class MockGlassesTestViewModel: ObservableObject {
         )
         log("Photo data posted — check if Lookout processes it")
     }
-    
+
+    func simulateCameraButton() {
+        log("📷 Simulating hardware camera button press")
+        let testImage: Data
+        if let url = Bundle.main.url(forResource: "test_glasses_capture", withExtension: "jpg"),
+           let data = try? Data(contentsOf: url) {
+            testImage = data
+            log("Using test_glasses_capture.jpg from bundle")
+        } else if let placeholder = UIImage(systemName: "camera.fill")?.withTintColor(.white, renderingMode: .alwaysOriginal),
+                  let data = placeholder.pngData() {
+            testImage = data
+            log("⚠️ Using placeholder image (add test_glasses_capture.jpg for real testing)")
+        } else {
+            log("❌ Could not create test image")
+            return
+        }
+
+        NotificationCenter.default.post(
+            name: .mockGlassesCameraButton,
+            object: nil,
+            userInfo: ["imageData": testImage]
+        )
+        log("Camera button event posted — check if Lookout processes it")
+    }
+
     private func log(_ message: String) {
         let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
         logMessages.insert("[\(timestamp)] \(message)", at: 0)
@@ -365,6 +393,7 @@ class MockGlassesTestViewModel: ObservableObject {
 extension Notification.Name {
     static let mockGlassesVoiceTrigger = Notification.Name("mockGlassesVoiceTrigger")
     static let mockGlassesPhotoCapture = Notification.Name("mockGlassesPhotoCapture")
+    static let mockGlassesCameraButton = Notification.Name("mockGlassesCameraButton")
 }
 
 #endif

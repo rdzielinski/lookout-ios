@@ -181,6 +181,8 @@ struct SettingsView: View {
                                 glassDivider()
                                 glassToggle("Auto-Listen on Connect", icon: "mic.fill", isOn: $settings.glassesAutoListen)
                                 glassDivider()
+                                glassToggle("Camera Button Trigger", icon: "camera.circle.fill", isOn: $settings.glassesCameraButtonEnabled)
+                                glassDivider()
                                 glassToggle("Audio-Only Mode", icon: "speaker.wave.2.fill", isOn: $settings.audioOnlyGlasses)
                                 glassDivider()
                                 glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
@@ -188,7 +190,7 @@ struct SettingsView: View {
 
                             settingsFooter(
                                 settings.glassesMode
-                                ? "Say your trigger phrase to scan. Results spoken through glasses speakers. Audio-Only skips the screen UI. Hands-Free auto-listens for follow-up questions."
+                                ? "Say your trigger phrase or press the camera button on your glasses to scan. Results spoken through glasses speakers. Audio-Only skips the screen UI. Hands-Free auto-listens for follow-up questions."
                                 : "Connect Meta Ray-Ban for hands-free scanning. Requires Meta AI app."
                             )
                         }

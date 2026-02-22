@@ -162,6 +162,26 @@ class LookoutViewModel: ObservableObject {
             }
         }
         
+        // Wire hardware camera button — fires when user presses camera button on glasses
+        glassesService.cameraButtonEnabled = settings.glassesCameraButtonEnabled
+        glassesService.onCameraButtonCaptured = { [weak self] imageData in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // Ignore if already processing a scan
+                guard !self.isCapturing else {
+                    #if DEBUG
+                    print("🕶️ Camera button ignored — already capturing")
+                    #endif
+                    return
+                }
+                #if DEBUG
+                print("🕶️ Camera button triggered scan")
+                #endif
+                self.haptics.capturePressed()
+                self.processGlassesPhoto(imageData)
+            }
+        }
+
         // Wire voice trigger — use glasses camera if connected, phone camera if not
         glassesService.onVoiceTriggerDetected = { [weak self] in
             Task { @MainActor [weak self] in

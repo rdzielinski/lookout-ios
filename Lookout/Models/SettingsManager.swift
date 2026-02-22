@@ -48,6 +48,7 @@ class SettingsManager: ObservableObject {
     @AppStorage("audioOnlyGlasses") var audioOnlyGlasses: Bool = true
     @AppStorage("handsFreeChatEnabled") var handsFreeChatEnabled: Bool = true
     @AppStorage("followUpTimeoutSeconds") var followUpTimeoutSeconds: Double = 12.0
+    @AppStorage("glassesCameraButtonEnabled") var glassesCameraButtonEnabled: Bool = true
     
     var hasValidAPIKey: Bool {
         switch selectedProvider {
