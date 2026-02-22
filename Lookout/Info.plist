@@ -2,101 +2,90 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDisplayName</key>
-    <string>Lookout</string>
-    <key>CFBundleExecutable</key>
-    <string>$(EXECUTABLE_NAME)</string>
-    <key>CFBundleIdentifier</key>
-    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-    <key>CFBundleName</key>
-    <string>Lookout</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>ITSAppUsesNonExemptEncryption</key>
-    <false/>
-    <key>LSRequiresIPhoneOS</key>
-    <true/>
-
-    <!-- Permissions -->
-    <key>NSCameraUsageDescription</key>
-    <string>Lookout uses your camera to identify objects, buildings, aircraft, and more using AI vision.</string>
-    <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Lookout uses your location to find nearby flights, landmarks, and points of interest.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Lookout uses your microphone to identify music playing nearby using Shazam.</string>
-    <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
-    <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Lookout uses speech recognition so you can ask follow-up questions about what you see.</string>
-
-    <!-- Background modes: Bluetooth + External Accessory (glasses) -->
-    <key>UIBackgroundModes</key>
-    <array>
-        <string>bluetooth-central</string>
-        <string>bluetooth-peripheral</string>
-        <string>external-accessory</string>
-    </array>
-
-    <!-- External accessory protocol for Meta glasses -->
-    <key>UISupportedExternalAccessoryProtocols</key>
-    <array>
-        <string>com.meta.ar.wearable</string>
-    </array>
-
-    <key>UILaunchScreen</key>
-    <dict>
-        <key>UIColorName</key>
-        <string>AccentColor</string>
-    </dict>
-    <key>UISupportedInterfaceOrientations</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-    </array>
-
-    <!-- Meta Wearables DAT SDK Configuration -->
-    <key>MWDAT</key>
-    <dict>
-        <key>AppLinkURLScheme</key>
-        <string>lookout</string>
-        <key>MetaAppID</key>
-        <string>4320803251539012</string>
-        <key>ClientToken</key>
-        <string>AR|4320803251539012|051aa803e924892b527ecb3db15c541a</string>
-    </dict>
-
-    <!-- Also keep top-level for backwards compatibility -->
-    <key>AppLinkURLScheme</key>
-    <string>lookout</string>
-    <key>MetaAppID</key>
-    <string>4320803251539012</string>
-    <key>ClientToken</key>
-    <string>AR|4320803251539012|051aa803e924892b527ecb3db15c541a</string>
-    <key>TeamID</key>
-    <string>$(DEVELOPMENT_TEAM)</string>
-
-    <!-- URL schemes: lookout:// for Meta AI callback + fb{appId} for Facebook -->
-    <key>CFBundleURLTypes</key>
-    <array>
-        <dict>
-            <key>CFBundleURLSchemes</key>
-            <array>
-                <string>lookout</string>
-                <string>fb4320803251539012</string>
-            </array>
-        </dict>
-    </array>
-
-    <!-- Apps this app can query/open: Meta AI + Facebook -->
-    <key>LSApplicationQueriesSchemes</key>
-    <array>
-        <string>metaai</string>
-        <string>fb</string>
-        <string>fb-viewapp</string>
-        <string>facebook</string>
-    </array>
+	<key>CFBundleDisplayName</key>
+	<string>Lookout</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Lookout</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>lookout</string>
+				<string>fb4320803251539012</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Begin required section for Device Access Toolkit Apps -->
+	<!-- Meta Wearables Device Access Toolkit Setup -->
+	<key>MWDAT</key>
+	<dict>
+		<key>AppLinkURLScheme</key>
+		<!-- Tell DAT your URL scheme so it can be called back from Meta AI -->
+		<string>lookout://</string>
+		<key>MetaAppID</key>
+		<string>4320803251539012</string>
+		<key>ClientToken</key>
+		<string>AR|4320803251539012|051aa803e924892b527ecb3db15c541a</string>
+		<key>TeamID</key>
+		<string>$(DEVELOPMENT_TEAM)</string>
+	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-peripheral</string>
+		<string>external-accessory</string>
+	</array>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
+	<key>UISupportedExternalAccessoryProtocols</key>
+	<array>
+		<string>com.meta.ar.wearable</string>
+	</array>
+	<!-- End required section for Device Access Toolkit Apps -->
+	<key>NSCameraUsageDescription</key>
+	<string>Lookout uses your camera to identify objects, buildings, aircraft, and more using AI vision.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Lookout uses your location to find nearby flights, landmarks, and points of interest.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Lookout uses your microphone to identify music playing nearby using Shazam.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Lookout uses speech recognition so you can ask follow-up questions about what you see.</string>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>AccentColor</string>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>metaai</string>
+		<string>fb</string>
+		<string>fb-viewapp</string>
+	</array>
 </dict>
 </plist>
