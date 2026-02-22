@@ -512,14 +512,32 @@ class GlassesService: ObservableObject {
         #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task { @MainActor in
             do {
+                // Check and request camera permission on the glasses
+                #if DEBUG
+                print("🕶️ Checking glasses camera permission...")
+                #endif
                 let status = try await wearables.checkPermissionStatus(.camera)
+                #if DEBUG
+                print("🕶️ Camera permission status: \(status)")
+                #endif
+
                 if status != .granted {
+                    #if DEBUG
+                    print("🕶️ Requesting camera permission — this may open Meta AI app...")
+                    #endif
                     let requestStatus = try await wearables.requestPermission(.camera)
+                    #if DEBUG
+                    print("🕶️ Camera permission request result: \(requestStatus)")
+                    #endif
                     guard requestStatus == .granted else {
-                        lastError = "Camera permission denied"
+                        lastError = "Camera permission denied. Open Meta AI app and grant camera access for Lookout."
                         return
                     }
                 }
+
+                #if DEBUG
+                print("🕶️ Camera permission granted — starting stream session...")
+                #endif
 
                 let selector = AutoDeviceSelector(wearables: wearables)
                 let config = StreamSessionConfig(
@@ -534,6 +552,9 @@ class GlassesService: ObservableObject {
                 photoDataListenerToken = session.photoDataPublisher.listen { [weak self] photoData in
                     Task { @MainActor [weak self] in
                         guard let self else { return }
+                        #if DEBUG
+                        print("🕶️ Photo captured from glasses (\(photoData.data.count) bytes)")
+                        #endif
                         if let image = UIImage(data: photoData.data),
                            let jpegData = image.jpegData(compressionQuality: 0.7) {
                             self.onPhotoCaptured?(jpegData)
@@ -547,6 +568,9 @@ class GlassesService: ObservableObject {
                 stateListenerToken = session.statePublisher.listen { [weak self] state in
                     Task { @MainActor [weak self] in
                         guard let self else { return }
+                        #if DEBUG
+                        print("🕶️ Stream session state: \(state)")
+                        #endif
                         switch state {
                         case .streaming:
                             session.capturePhoto(format: .jpeg)
@@ -561,7 +585,7 @@ class GlassesService: ObservableObject {
 
                 errorListenerToken = session.errorPublisher.listen { [weak self] error in
                     Task { @MainActor [weak self] in
-                        self?.lastError = "Streaming error"
+                        self?.lastError = "Streaming error: check camera permission in Meta AI app"
                         #if DEBUG
                         print("🕶️ Stream error: \(error)")
                         #endif
@@ -571,9 +595,12 @@ class GlassesService: ObservableObject {
                 await session.start()
 
             } catch {
-                lastError = error.localizedDescription
+                // PermissionError from checkPermissionStatus or requestPermission
+                // means we need to approve camera access in the Meta AI app
+                lastError = "Camera permission needed. Approve camera access in the Meta AI app."
                 #if DEBUG
                 print("🕶️ Capture error: \(error)")
+                print("🕶️ This likely means camera permission needs to be granted in the Meta AI app")
                 #endif
             }
         }
