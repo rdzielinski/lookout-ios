@@ -24,8 +24,16 @@
     <string>Lookout uses your location to find nearby flights, landmarks, and points of interest.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Lookout uses your microphone to identify music playing nearby using Shazam.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Lookout uses speech recognition so you can ask follow-up questions about what you see.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>bluetooth-central</string>
+    </array>
     <key>UILaunchScreen</key>
     <dict>
         <key>UIColorName</key>
