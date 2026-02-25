@@ -1153,7 +1153,7 @@ class LookoutViewModel: ObservableObject {
         }
 
         // Timeout — if no speech after configured seconds, return to idle
-        let timeout = settings?.followUpTimeoutSeconds ?? 12.0
+        let timeout = settings.followUpTimeoutSeconds
         followUpTimeoutTask?.cancel()
         followUpTimeoutTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
@@ -1443,3 +1443,4 @@ class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         continuation = nil
     }
 }
+
