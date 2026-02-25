@@ -34,6 +34,7 @@ class SettingsManager: ObservableObject {
     @AppStorage("elevenLabsVoiceId") var elevenLabsVoiceId: String = "21m00Tcm4TlvDq8ikWAM"
     @AppStorage("elevenLabsVoiceName") var elevenLabsVoiceName: String = "Rachel"
     @AppStorage("adsbExchangeAPIKey") var adsbExchangeAPIKey: String = ""
+    @AppStorage("flightradar24APIKey") var flightradar24APIKey: String = ""
     @AppStorage("googlePlacesAPIKey") var googlePlacesAPIKey: String = ""
     @AppStorage("smartNarrationEnabled") var smartNarrationEnabled: Bool = true
     @AppStorage("faceRecognitionEnabled") var faceRecognitionEnabled: Bool = true

@@ -33,7 +33,7 @@ class SkillRouter: ObservableObject {
     }
     
     private func registerSkills() {
-        skills[.flight] = FlightSkill(adsbAPIKey: settings.adsbExchangeAPIKey)
+        skills[.flight] = FlightSkill(fr24APIKey: settings.flightradar24APIKey, adsbAPIKey: settings.adsbExchangeAPIKey)
         skills[.landmark] = LandmarkSkill(googlePlacesAPIKey: settings.googlePlacesAPIKey)
         skills[.music] = MusicSkill()
         skills[.plant] = PlantSkill()

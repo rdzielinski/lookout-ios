@@ -48,7 +48,9 @@ struct SettingsView: View {
                             apiKeyField(label: "OpenAI API Key", placeholder: "sk-...", text: $settings.openAIAPIKey)
                             glassDivider()
                             apiKeyField(label: "Google Places (Optional)", placeholder: "AIza...", text: $settings.googlePlacesAPIKey)
-                            settingsFooter("Stored locally on device. Flight tracking uses OpenSky (free). Landmarks fall back to Wikipedia without Google key.")
+                            glassDivider()
+                            apiKeyField(label: "FlightRadar24 (Optional)", placeholder: "fr24_...", text: $settings.flightradar24APIKey)
+                            settingsFooter("Stored locally on device. FlightRadar24 provides rich flight data (airline, route, aircraft type). Falls back to OpenSky (free) without FR24 key.")
                         }
 
                         // Meta Ray-Ban Glasses

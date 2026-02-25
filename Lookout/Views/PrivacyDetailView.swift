@@ -84,7 +84,7 @@ struct PrivacyDetailView: View {
                 
                 dataRow(icon: "airplane", color: .orange,
                         title: "Flight Tracking",
-                        detail: "Your approximate GPS coordinates are sent to OpenSky Network to find nearby aircraft. Used only when analyzing a photo that contains a plane.")
+                        detail: "Your approximate GPS coordinates are sent to FlightRadar24 (if API key provided) or OpenSky Network to find nearby aircraft. Used only when analyzing a photo that contains a plane.")
                 
                 dataRow(icon: "leaf", color: .orange,
                         title: "Plant & Animal ID",

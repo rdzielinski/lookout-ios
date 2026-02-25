@@ -362,20 +362,47 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     
     private func buildFlightSpeech(_ result: SkillResult) -> [String] {
         var segments: [String] = []
+
+        // Build a rich intro using FR24 data when available
+        let detailMap = Dictionary(result.details.map { ($0.label, $0.value) }, uniquingKeysWith: { first, _ in first })
+
+        let airline = detailMap["Airline"]
+        let route = detailMap["Route"]
+        let aircraft = detailMap["Aircraft"]
+
+        // Title: "That's United 456" or "That's Flight UA456"
         segments.append("That's \(result.title).")
+
+        // Airline + aircraft type: "A United Airlines Boeing 737"
+        if let airline = airline, let aircraft = aircraft {
+            segments.append("A \(airline) \(aircraft).")
+        } else if let airline = airline {
+            segments.append("Operated by \(airline).")
+        } else if let aircraft = aircraft {
+            segments.append("It's a \(aircraft).")
+        }
+
+        // Route: "Flying from JFK to LAX"
+        if let route = route {
+            segments.append("Flying \(route.replacingOccurrences(of: "→", with: "to")).")
+        }
+
+        // Flight details: altitude, speed, heading
         var detailParts: [String] = []
         for detail in result.details {
             switch detail.label {
-            case "Origin Country": detailParts.append("registered in \(detail.value)")
-            case "Altitude": detailParts.append("flying at \(detail.value)")
-            case "Speed": detailParts.append("doing about \(detail.value)")
+            case "Origin Country" where airline == nil:
+                detailParts.append("registered in \(detail.value)")
+            case "Altitude": detailParts.append("at \(detail.value)")
+            case "Speed": detailParts.append("doing \(detail.value)")
             case "Heading": detailParts.append("heading \(detail.value)")
             default: break
             }
         }
         if !detailParts.isEmpty {
-            segments.append("It's " + detailParts.joined(separator: ", ") + ".")
+            segments.append("Currently " + detailParts.joined(separator: ", ") + ".")
         }
+
         if result.deepLinkURL != nil {
             segments.append("Open FlightRadar for the full route.")
         }
