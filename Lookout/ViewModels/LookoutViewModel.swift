@@ -338,6 +338,8 @@ class LookoutViewModel: ObservableObject {
                     conversationTurnCount = 0
                 }
 
+                var didStartSpeech = false
+
                 if settings.smartNarrationEnabled {
                     let narrationDebug = try? await smartNarration?.generateNarrationDebug(
                         skillResult: processed.skillResult,
@@ -350,6 +352,7 @@ class LookoutViewModel: ObservableObject {
                     )
 
                     if let text = narrationDebug?.outputText, !text.isEmpty {
+                        didStartSpeech = true
                         if useHandsFree {
                             speechService.speak(text) { [weak self] in
                                 Task { @MainActor [weak self] in
@@ -362,22 +365,31 @@ class LookoutViewModel: ObservableObject {
                     }
                 } else {
                     let segments = speechService.buildSpeechText(from: processed.skillResult)
-                    if useHandsFree {
-                        let combined = segments.joined(separator: " ")
-                        speechService.speak(combined) { [weak self] in
-                            Task { @MainActor [weak self] in
-                                self?.startHandsFreeFollowUp()
+                    let combined = segments.joined(separator: " ")
+                    if !combined.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        didStartSpeech = true
+                        if useHandsFree {
+                            speechService.speak(combined) { [weak self] in
+                                Task { @MainActor [weak self] in
+                                    self?.startHandsFreeFollowUp()
+                                }
                             }
+                        } else {
+                            speechService.speakSegments(segments)
                         }
-                    } else {
-                        speechService.speakSegments(segments)
                     }
                 }
 
                 isCapturing = false
-                if !useHandsFree {
+                // If hands-free speech started, the completion callback will handle state reset.
+                // Otherwise, return to idle immediately.
+                if !useHandsFree || !didStartSpeech {
                     glassesFlowState = .idle
                     glassesService.resumeVoiceTrigger()
+                    if useHandsFree && !didStartSpeech {
+                        // Hands-free was requested but narration produced nothing — start follow-up anyway
+                        startHandsFreeFollowUp()
+                    }
                 }
 
             } catch {
