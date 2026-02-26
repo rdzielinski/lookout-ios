@@ -60,6 +60,7 @@
 		C200000007 /* BusinessCardSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000007 /* BusinessCardSkill.swift */; };
 		C200000008 /* QRCodeSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000008 /* QRCodeSkill.swift */; };
 		C200000009 /* FrameBufferService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000009 /* FrameBufferService.swift */; };
+		C200000010 /* BackgroundKeepAliveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000010 /* BackgroundKeepAliveService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		D200000007 /* BusinessCardSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessCardSkill.swift; sourceTree = "<group>"; };
 		D200000008 /* QRCodeSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeSkill.swift; sourceTree = "<group>"; };
 		D200000009 /* FrameBufferService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameBufferService.swift; sourceTree = "<group>"; };
+		D200000010 /* BackgroundKeepAliveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundKeepAliveService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -212,6 +214,7 @@
 				B100000011 /* SpeechService.swift */,
 				214F2DB22F401AA00063539A /* PriceLookupService.swift */,
 				D200000009 /* FrameBufferService.swift */,
+				D200000010 /* BackgroundKeepAliveService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -366,6 +369,7 @@
 				C200000007 /* BusinessCardSkill.swift in Sources */,
 				C200000008 /* QRCodeSkill.swift in Sources */,
 				C200000009 /* FrameBufferService.swift in Sources */,
+				C200000010 /* BackgroundKeepAliveService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

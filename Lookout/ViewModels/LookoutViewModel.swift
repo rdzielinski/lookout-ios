@@ -116,10 +116,12 @@ class LookoutViewModel: ObservableObject {
                     if !self.isAudioOnlyMode {
                         self.isAudioOnlyMode = true
                         self.haptics.audioOnlyConfirmed()
+                        BackgroundKeepAliveService.shared.setGlassesMode(true)
                     }
                 } else if !connected {
                     self.isAudioOnlyMode = false
                     self.glassesFlowState = .idle
+                    BackgroundKeepAliveService.shared.setGlassesMode(false)
                 }
             }
         
@@ -140,14 +142,41 @@ class LookoutViewModel: ObservableObject {
                 self?.captureAndAnalyze()
             }
         }
+
+        // Sync background keep-alive state from saved settings
+        syncKeepAliveState()
+
+        // Wire location changes to proactive narration
+        locationManager.onSignificantLocationChange = { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.checkProactiveNarration()
+            }
+        }
     }
-    
+
     deinit {
         if let observer = siriObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
     
+    /// Sync keep-alive state from settings. Call after settings change.
+    func syncKeepAliveState() {
+        guard let settings = settings else { return }
+        // Proactive narration needs background location
+        BackgroundKeepAliveService.shared.setProactiveNarration(settings.proactiveNarrationEnabled)
+        // If continuous scan is enabled in settings but not yet active, the user
+        // must start it explicitly — we don't auto-start on launch.
+        // Glasses mode is managed by the connection callback above.
+
+        // Enable background location updates for proactive narration
+        if settings.proactiveNarrationEnabled {
+            locationManager.enableBackgroundUpdates()
+        } else {
+            locationManager.disableBackgroundUpdates()
+        }
+    }
+
     /// Sync voice engine settings to SpeechService
     func syncVoiceSettings() {
         guard let settings = settings else { return }
@@ -1091,6 +1120,7 @@ class LookoutViewModel: ObservableObject {
     func startContinuousScan() {
         guard !isContinuousScanActive else { return }
         isContinuousScanActive = true
+        BackgroundKeepAliveService.shared.setContinuousScan(true)
         let interval = settings?.continuousScanInterval ?? 8.0
 
         continuousScanTask = Task { [weak self] in
@@ -1109,6 +1139,7 @@ class LookoutViewModel: ObservableObject {
         isContinuousScanActive = false
         continuousScanTask?.cancel()
         continuousScanTask = nil
+        BackgroundKeepAliveService.shared.setContinuousScan(false)
     }
 
     // MARK: - "What Did I Just See?" Replay
