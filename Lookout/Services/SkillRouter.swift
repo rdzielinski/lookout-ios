@@ -39,6 +39,14 @@ class SkillRouter: ObservableObject {
         skills[.plant] = PlantSkill()
         skills[.vehicle] = VehicleSkill()
         skills[.product] = barcodeSkill
+        skills[.translation] = TranslationSkill(settings: settings)
+        skills[.food] = FoodSkill(settings: settings)
+        skills[.drink] = DrinkSkill(settings: settings)
+        skills[.receipt] = ReceiptSkill(settings: settings)
+        skills[.medication] = MedicationSkill()
+        skills[.book] = BookSkill()
+        skills[.businessCard] = BusinessCardSkill(settings: settings)
+        skills[.qrCode] = QRCodeSkill()
     }
     
     func refreshSkills() {
@@ -69,6 +77,32 @@ class SkillRouter: ObservableObject {
         let preScan = await preScanTask
         let faceMatches = await faceTask
         
+        // If QR code was detected in pre-scan, fast path (skip AI)
+        if let preScan = preScan, preScan.predictedCategory == .qrCode, preScan.confidence >= 1.0 {
+            HapticService.shared.barcodeDetected()
+            onStatusUpdate?(.executingQRCode)
+
+            let aiResponse = AIVisionResponse(
+                category: "qrCode",
+                description: "QR code detected",
+                query: preScan.query,
+                confidence: 1.0
+            )
+            let result = try await (skills[.qrCode] ?? QRCodeSkill()).execute(query: preScan.query, location: location)
+
+            recordScan(aiResponse: aiResponse, result: result, location: location, faces: faceMatches)
+
+            return ProcessedResult(
+                aiResponse: aiResponse,
+                rawAIResponse: aiResponse,
+                skillResult: result,
+                faceMatches: faceMatches,
+                nearbyPlace: checkNearbyPlace(location: location),
+                environment: environment,
+                routingDecision: RoutingDecision(reason: "QR code pre-scan fast-path", matchedKeyword: preScan.query)
+            )
+        }
+
         // If barcode was found in pre-scan, fast path (skip AI entirely)
         if let preScan = preScan, let barcode = preScan.detectedBarcode {
             HapticService.shared.barcodeDetected()
@@ -296,13 +330,21 @@ class SkillRouter: ObservableObject {
     
     static func executingStatus(for category: SkillCategory) -> LookoutQuery.QueryStatus {
         switch category {
-        case .flight:   return .executingFlight
-        case .landmark: return .executingLandmark
-        case .music:    return .executingMusic
-        case .plant:    return .executingPlant
-        case .vehicle:  return .executingVehicle
-        case .product:  return .executingProduct
-        case .unknown:  return .executingGeneral
+        case .flight:       return .executingFlight
+        case .landmark:     return .executingLandmark
+        case .music:        return .executingMusic
+        case .plant:        return .executingPlant
+        case .vehicle:      return .executingVehicle
+        case .product:      return .executingProduct
+        case .translation:  return .executingTranslation
+        case .food:         return .executingFood
+        case .drink:        return .executingDrink
+        case .receipt:      return .executingReceipt
+        case .medication:   return .executingMedication
+        case .book:         return .executingBook
+        case .businessCard: return .executingBusinessCard
+        case .qrCode:       return .executingQRCode
+        case .unknown:      return .executingGeneral
         }
     }
     

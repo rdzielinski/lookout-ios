@@ -45,7 +45,10 @@ class LookoutViewModel: ObservableObject {
     
     // Offline mode
     @Published var isOfflineMode = false
-    
+
+    // Continuous scan mode
+    @Published var isContinuousScanActive = false
+
     // MARK: - Services
     let locationManager = LocationManager()
     let speechService = SpeechService()
@@ -55,17 +58,24 @@ class LookoutViewModel: ObservableObject {
     let userContext = UserContextStore()
     let glassesService = GlassesService()
     let offlineVision = OfflineVisionService()
+    let frameBuffer = FrameBufferService.shared
     private let haptics = HapticService.shared
     private var conversationService: ConversationService?
     private var smartNarration: SmartNarrationService?
     private var skillRouter: SkillRouter?
     private var settings: SettingsManager?
-    
+
     // MARK: - Geocoding Cache
     private var geocodingCache: (location: CLLocation, result: (type: PlaceSignalType, evidence: String?), date: Date)?
-    
+
     // Siri scan observer
     private var siriObserver: Any?
+
+    // Continuous scan timer
+    private var continuousScanTask: Task<Void, Never>?
+
+    // Proactive narration
+    private var lastProactivePlace: String?
 
     // Audio-only / hands-free state
     private var glassesConnectionCancellable: AnyCancellable?
@@ -1048,7 +1058,7 @@ class LookoutViewModel: ObservableObject {
     }
     
     // MARK: - Place Saving
-    
+
     func saveCurrentPlace(name: String, category: PlaceCategory = .other) {
         guard let location = locationManager.currentLocation else {
             errorMessage = "Location not available"
@@ -1056,6 +1066,173 @@ class LookoutViewModel: ObservableObject {
         }
         placeMemory.saveCurrentLocation(name: name, location: location, category: category)
         haptics.resultReady()
+    }
+
+    // MARK: - Parking Spot
+
+    func saveParkingSpot(notes: String = "") {
+        guard let location = locationManager.currentLocation else {
+            errorMessage = "Location not available"
+            return
+        }
+        placeMemory.saveParkingSpot(location: location, notes: notes)
+        haptics.resultReady()
+        if settings?.voiceOutputEnabled == true {
+            speechService.speak("Parking spot saved. I'll remember where you parked.")
+        }
+    }
+
+    func recallParkingSpot() -> SavedPlace? {
+        placeMemory.currentParkingSpot()
+    }
+
+    // MARK: - Continuous Scan Mode
+
+    func startContinuousScan() {
+        guard !isContinuousScanActive else { return }
+        isContinuousScanActive = true
+        let interval = settings?.continuousScanInterval ?? 8.0
+
+        continuousScanTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.isContinuousScanActive else { break }
+                // Don't scan if already processing
+                if !self.isCapturing {
+                    self.captureAndAnalyze()
+                }
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            }
+        }
+    }
+
+    func stopContinuousScan() {
+        isContinuousScanActive = false
+        continuousScanTask?.cancel()
+        continuousScanTask = nil
+    }
+
+    // MARK: - "What Did I Just See?" Replay
+
+    func replayLastFrame() {
+        guard let frame = frameBuffer.mostRecentFrame() else {
+            errorMessage = "No recent frames buffered"
+            return
+        }
+        // Run the standard capture pipeline on the buffered frame
+        processReplayFrame(frame.imageData)
+    }
+
+    func replayFrameFromSecondsAgo(_ seconds: TimeInterval) {
+        guard let frame = frameBuffer.frameFromSecondsAgo(seconds) else {
+            errorMessage = "No frame found from \(Int(seconds))s ago"
+            return
+        }
+        processReplayFrame(frame.imageData)
+    }
+
+    private func processReplayFrame(_ imageData: Data) {
+        guard let settings = settings, let skillRouter = skillRouter else { return }
+        guard settings.hasValidAPIKey else {
+            errorMessage = "No API key configured"
+            return
+        }
+        isCapturing = true
+        errorMessage = nil
+        haptics.scanStarted()
+
+        Task {
+            do {
+                var query = LookoutQuery(imageData: imageData)
+                query.status = .analyzing
+                currentQuery = query
+                showResult = true
+                pendingFaceImageData = imageData
+
+                let processed = try await skillRouter.processImage(
+                    imageData,
+                    location: locationManager.currentLocation,
+                    onStatusUpdate: { [weak self] status in
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            var q = self.currentQuery ?? LookoutQuery(imageData: imageData)
+                            q.status = status
+                            self.currentQuery = q
+                        }
+                    }
+                )
+
+                query.aiResponse = processed.aiResponse
+                query.skillResult = processed.skillResult
+                query.status = .complete
+                currentQuery = query
+                currentFaceMatches = processed.faceMatches
+                haptics.resultReady()
+                queryHistory.insert(query, at: 0)
+
+                syncVoiceSettings()
+                if settings.smartNarrationEnabled, let narration = try? await smartNarration?.generateNarration(
+                    skillResult: processed.skillResult,
+                    aiDescription: processed.aiResponse.description,
+                    faceMatches: processed.faceMatches,
+                    nearbyPlace: processed.nearbyPlace
+                ) {
+                    speechService.speak(narration)
+                }
+                isCapturing = false
+            } catch {
+                errorMessage = error.localizedDescription
+                isCapturing = false
+            }
+        }
+    }
+
+    // MARK: - Proactive Place Narration
+
+    func checkProactiveNarration() {
+        guard let settings = settings, settings.proactiveNarrationEnabled else { return }
+        guard let location = locationManager.currentLocation else { return }
+        guard let place = placeMemory.findNearbyPlace(location: location) else {
+            lastProactivePlace = nil
+            return
+        }
+
+        // Only narrate once per place visit
+        guard place.name != lastProactivePlace else { return }
+        lastProactivePlace = place.name
+
+        // Build a context-aware greeting
+        let contextString = userContext.buildContextPrompt(
+            personalContext: settings.personalContext,
+            faceContext: "",
+            placeContext: placeMemory.contextSummary,
+            nearbyContext: "Arrived at: \(place.name) (\(place.category.rawValue))",
+            currentScanTitle: "",
+            currentScanCategory: ""
+        )
+
+        Task {
+            if settings.smartNarrationEnabled, let narration = try? await smartNarration?.generateNarration(
+                skillResult: SkillResult(
+                    category: .landmark,
+                    title: place.name,
+                    subtitle: place.category.rawValue,
+                    details: [
+                        .init(label: "Visits", value: "\(place.visitCount)", iconName: "figure.walk"),
+                        .init(label: "Notes", value: place.notes, iconName: "bookmark")
+                    ],
+                    sourceApp: "Lookout Memory",
+                    deepLinkURL: nil
+                ),
+                aiDescription: "User arrived at \(place.name), a \(place.category.rawValue) they've visited \(place.visitCount) times.",
+                nearbyPlace: place,
+                userContext: contextString
+            ) {
+                syncVoiceSettings()
+                speechService.speak(narration)
+            }
+        }
+
+        placeMemory.markVisited(name: place.name)
     }
     
     // MARK: - Follow-up Conversation
@@ -1436,8 +1613,11 @@ class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         
         if let image = UIImage(data: data), let compressed = image.jpegData(compressionQuality: 0.7) {
+            // Buffer frame for replay if enabled
+            FrameBufferService.shared.addFrame(imageData: compressed)
             continuation?.resume(returning: compressed)
         } else {
+            FrameBufferService.shared.addFrame(imageData: data)
             continuation?.resume(returning: data)
         }
         continuation = nil

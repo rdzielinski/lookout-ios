@@ -19,30 +19,72 @@ class AIVisionService {
     
     var debugSystemPromptText: String { systemPrompt }
     
-    // MARK: - Main Analysis Method
-    func analyzeImage(_ image: UIImage) async throws -> AIVisionResponse {
-        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
-            throw LookoutError.imageProcessingFailed
+    // MARK: - Image Optimization
+    /// Downscale + compress to reduce upload size and latency by ~40-60%.
+    private func optimizedBase64(from image: UIImage) -> String? {
+        let maxDimension: CGFloat = 1024
+        let size = image.size
+        var targetSize = size
+        if max(size.width, size.height) > maxDimension {
+            let scale = maxDimension / max(size.width, size.height)
+            targetSize = CGSize(width: size.width * scale, height: size.height * scale)
         }
-        
-        let base64Image = imageData.base64EncodedString()
-        
-        switch settings.selectedProvider {
-        case .claude:
-            return try await analyzeWithClaude(base64Image: base64Image)
-        case .openai:
-            return try await analyzeWithOpenAI(base64Image: base64Image)
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return resized.jpegData(compressionQuality: 0.45)?.base64EncodedString()
+    }
+
+    // MARK: - Response Cache
+    /// Simple in-memory cache keyed by a truncated image hash to skip re-analysis of identical frames.
+    private static var responseCache: [Int: (response: AIVisionResponse, date: Date)] = [:]
+    private static let cacheTTL: TimeInterval = 30
+
+    private func cachedResponse(for imageHash: Int) -> AIVisionResponse? {
+        guard let entry = Self.responseCache[imageHash],
+              Date().timeIntervalSince(entry.date) < Self.cacheTTL else { return nil }
+        return entry.response
+    }
+
+    private func cacheResponse(_ response: AIVisionResponse, for imageHash: Int) {
+        Self.responseCache[imageHash] = (response, Date())
+        // Evict old entries
+        if Self.responseCache.count > 20 {
+            let cutoff = Date().addingTimeInterval(-Self.cacheTTL)
+            Self.responseCache = Self.responseCache.filter { $0.value.date > cutoff }
         }
     }
-    
-    // MARK: - Streaming Analysis (returns partial text via callback)
-    func analyzeImageStreaming(_ image: UIImage, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
-        guard let imageData = image.jpegData(compressionQuality: 0.7) else {
+
+    // MARK: - Main Analysis Method
+    func analyzeImage(_ image: UIImage) async throws -> AIVisionResponse {
+        guard let base64Image = optimizedBase64(from: image) else {
             throw LookoutError.imageProcessingFailed
         }
-        
-        let base64Image = imageData.base64EncodedString()
-        
+
+        let imageHash = base64Image.prefix(256).hashValue
+        if let cached = cachedResponse(for: imageHash) {
+            return cached
+        }
+
+        let result: AIVisionResponse
+        switch settings.selectedProvider {
+        case .claude:
+            result = try await analyzeWithClaude(base64Image: base64Image)
+        case .openai:
+            result = try await analyzeWithOpenAI(base64Image: base64Image)
+        }
+
+        cacheResponse(result, for: imageHash)
+        return result
+    }
+
+    // MARK: - Streaming Analysis (returns partial text via callback)
+    func analyzeImageStreaming(_ image: UIImage, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
+        guard let base64Image = optimizedBase64(from: image) else {
+            throw LookoutError.imageProcessingFailed
+        }
+
         switch settings.selectedProvider {
         case .claude:
             return try await analyzeWithClaudeStreaming(base64Image: base64Image, onPartial: onPartial)
@@ -57,40 +99,41 @@ class AIVisionService {
         You are a visual analysis engine for the "Lookout" app. Your job is to look at an image \
         and determine what the user is curious about, then categorize it so the app can route \
         to the correct service/API.
-        
+
         Respond ONLY with valid JSON in this exact format:
         {
-            "category": "<one of: flight, landmark, music, plant, vehicle, product, unknown>",
+            "category": "<one of: flight, landmark, music, plant, vehicle, product, translation, food, drink, receipt, medication, book, businessCard, qrCode, unknown>",
             "description": "<brief description of what you see>",
             "query": "<specific search query for the downstream service>",
             "confidence": <0.0 to 1.0>
         }
-        
+
         Category guidelines:
-        - "flight": Any aircraft in the sky, airplane, helicopter, drone. For query, describe \
-        the aircraft type, approximate altitude/direction if visible, and any visible markings.
-        - "landmark": Buildings, monuments, bridges, structures, storefronts, signs. For query, \
-        provide the name if recognizable or a description.
-        - "music": ONLY use this category when the image clearly shows music actively being \
-        played or performed — such as a live concert, a DJ performing, a TV/speaker currently \
-        playing a music video, or a phone/device screen showing a now-playing interface. \
-        Do NOT use "music" for headphones, earbuds, instruments not being played, band t-shirts, \
-        album art posters, vinyl records, music equipment, speakers that are off, or any \
-        music-related objects. Those should be categorized as "product" (for buyable items) \
-        or "unknown" (for general music-related things). The "music" category triggers audio \
-        listening via Shazam, so only use it when there is likely live audio to identify.
-        - "plant": Nature category for plants AND animals (birds, insects, wildlife, pets). \
-        Important: if the subject is an animal, describe it explicitly as an animal/bird/pet — \
-        do not call it a plant. For query, describe key identifying features like shape, color, \
-        size, patterns, markings, habitat cues, or leaf/petal traits when relevant.
-        - "vehicle": Cars, trucks, motorcycles, boats, bicycles. For query, include make/model if \
-        identifiable, color, year estimate, body type, and distinguishing features.
-        - "product": Consumer products, barcodes, QR codes, packaged goods, food items, bottles, \
-        cans, electronics, headphones, earbuds, instruments, music equipment, wearable tech. \
-        For query, include brand name, product name, or barcode number if visible.
-        - "unknown": Anything that doesn't fit the above categories. Use this for general scenes, \
-        people, text, documents, clothing, art, or decorative items.
-        
+        - "flight": Any aircraft in the sky, airplane, helicopter, drone.
+        - "landmark": Buildings, monuments, bridges, structures, storefronts, signs.
+        - "music": ONLY when music is actively being played/performed (live concert, DJ, now-playing screen). \
+        NOT for headphones, instruments not being played, album art, or music equipment.
+        - "plant": Plants AND animals (birds, insects, wildlife, pets). Describe animals explicitly.
+        - "vehicle": Cars, trucks, motorcycles, boats, bicycles. Include make/model/color if visible.
+        - "product": Consumer products, barcodes, packaged goods, electronics, wearable tech.
+        - "translation": Foreign-language text, signs, menus, or documents in a non-English language. \
+        For query, include the visible text and the language if identifiable.
+        - "food": A plate of food, a meal, a dish, prepared food (NOT packaged food products — those are "product"). \
+        For query, describe the dishes and ingredients visible.
+        - "drink": Wine bottles, beer labels, coffee bags, cocktails, specialty beverages with labels. \
+        For query, include the brand/name, type, and any vintage/varietal visible on the label.
+        - "receipt": Paper receipts, invoices, bills, price tags with totals. \
+        For query, include the store name and total if readable.
+        - "medication": Pill bottles, medicine boxes, prescription labels, supplement containers. \
+        For query, include the drug/supplement name and dosage if visible.
+        - "book": Book covers, movie posters, DVD/Blu-ray cases, game covers. \
+        For query, include the title and author/director if visible.
+        - "businessCard": Business cards, name tags, contact information cards. \
+        For query, include the name, company, and any contact details visible.
+        - "qrCode": QR codes (NOT standard barcodes — those are "product"). \
+        For query, describe where the QR code appears.
+        - "unknown": Anything that doesn't fit the above categories.
+
         Be specific in your query field — it will be used to search external APIs.
         Do not include any text outside the JSON object.
         """
@@ -104,11 +147,14 @@ class AIVisionService {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue(settings.claudeAPIKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 30
-        
+        request.timeoutInterval = 20
+
+        // Use Haiku for fast classification routing; saves ~1-2s vs Sonnet.
+        let model = settings.useFastModel ? "claude-haiku-4-5-20251001" : "claude-sonnet-4-20250514"
+
         let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 500,
+            "model": model,
+            "max_tokens": 300,
             "system": systemPrompt,
             "messages": [
                 [
@@ -130,11 +176,11 @@ class AIVisionService {
                 ]
             ]
         ]
-        
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
             switch statusCode {
@@ -146,14 +192,14 @@ class AIVisionService {
                 throw LookoutError.apiError("Claude API error (\(statusCode)): \(errorBody)")
             }
         }
-        
+
         let claudeResponse = try JSONDecoder().decode(ClaudeAPIResponse.self, from: data)
         guard let textContent = claudeResponse.content.first(where: { $0.type == "text" }),
               let text = textContent.text,
               let jsonData = text.data(using: .utf8) else {
             throw LookoutError.parsingFailed
         }
-        
+
         return try JSONDecoder().decode(AIVisionResponse.self, from: jsonData)
     }
     

@@ -211,6 +211,38 @@ struct SettingsView: View {
                             settingsFooter("Smart Narration uses AI to generate natural speech. Face Recognition remembers named people. Place Memory saves familiar locations.")
                         }
 
+                        // Speed & Ambient
+                        glassSection(
+                            header: "Speed & Ambient",
+                            icon: "bolt.fill",
+                            iconColor: .yellow
+                        ) {
+                            glassToggle("Fast Model (Haiku)", icon: "hare", isOn: $settings.useFastModel)
+                            settingsFooter("Uses Claude Haiku for faster image classification (~1-2s faster). Slightly less accurate for ambiguous images.")
+                            glassDivider()
+                            glassToggle("Continuous Scan", icon: "arrow.triangle.2.circlepath", isOn: $settings.continuousScanEnabled)
+                            if settings.continuousScanEnabled {
+                                HStack {
+                                    Text("Interval")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white.opacity(0.7))
+                                    Spacer()
+                                    Text("\(Int(settings.continuousScanInterval))s")
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(.white)
+                                }
+                                Slider(value: $settings.continuousScanInterval, in: 5...30, step: 1)
+                                    .tint(.yellow)
+                            }
+                            settingsFooter("Periodically scans the camera and narrates what's around you.")
+                            glassDivider()
+                            glassToggle("Proactive Place Narration", icon: "location.fill", isOn: $settings.proactiveNarrationEnabled)
+                            settingsFooter("Speaks context when you arrive at a saved place.")
+                            glassDivider()
+                            glassToggle("Replay Buffer", icon: "backward.frame", isOn: $settings.replayBufferEnabled)
+                            settingsFooter("Keeps last 30 seconds of frames so you can ask 'What did I just see?'")
+                        }
+
                         // About You
                         glassSection(
                             header: "About You",
@@ -318,6 +350,22 @@ struct SettingsView: View {
                                 glassDivider()
                                 glassSkillRow(name: "Product / Barcode", icon: "barcode", status: .available, note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor)
                                 glassDivider()
+                                glassSkillRow(name: "Translation", icon: "character.book.closed", status: .available, note: "AI-powered text translation", color: SkillCategory.translation.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "Food & Nutrition", icon: "fork.knife", status: .available, note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "Drink ID", icon: "wineglass", status: .available, note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "Receipt Scanner", icon: "receipt", status: .available, note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "Medication", icon: "pill", status: .available, note: "OpenFDA (free)", color: SkillCategory.medication.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "Book & Movie", icon: "book", status: .available, note: "Open Library (free)", color: SkillCategory.book.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "Business Card", icon: "person.text.rectangle", status: .available, note: "AI contact extraction", color: SkillCategory.businessCard.skillColor)
+                                glassDivider()
+                                glassSkillRow(name: "QR Code", icon: "qrcode", status: .available, note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor)
+                                glassDivider()
                                 glassSkillRow(name: "Face Recognition", icon: "person.crop.circle",
                                               status: settings.faceRecognitionEnabled ? .available : .unavailable,
                                               note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
@@ -356,6 +404,12 @@ struct SettingsView: View {
                                                     Text("Seen \(face.timesSeen)×")
                                                 }
                                                 .font(.caption).foregroundStyle(.white.opacity(0.5))
+                                                if !face.notes.isEmpty {
+                                                    Text(face.notes)
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.white.opacity(0.4))
+                                                        .lineLimit(2)
+                                                }
                                             }
                                             Spacer()
                                             Text("\(face.sampleCount) samples")

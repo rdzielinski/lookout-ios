@@ -51,6 +51,15 @@
 		A100000016 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016 /* HistoryView.swift */; };
 		A100000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000017 /* Assets.xcassets */; };
 		A100000018 /* ScanDebugTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000019 /* ScanDebugTrace.swift */; };
+		C200000001 /* TranslationSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000001 /* TranslationSkill.swift */; };
+		C200000002 /* FoodSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000002 /* FoodSkill.swift */; };
+		C200000003 /* DrinkSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000003 /* DrinkSkill.swift */; };
+		C200000004 /* ReceiptSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000004 /* ReceiptSkill.swift */; };
+		C200000005 /* MedicationSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000005 /* MedicationSkill.swift */; };
+		C200000006 /* BookSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000006 /* BookSkill.swift */; };
+		C200000007 /* BusinessCardSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000007 /* BusinessCardSkill.swift */; };
+		C200000008 /* QRCodeSkill.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000008 /* QRCodeSkill.swift */; };
+		C200000009 /* FrameBufferService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D200000009 /* FrameBufferService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -97,6 +106,15 @@
 		B100000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B100000019 /* ScanDebugTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDebugTrace.swift; sourceTree = "<group>"; };
 		B100000099 /* Lookout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lookout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D200000001 /* TranslationSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationSkill.swift; sourceTree = "<group>"; };
+		D200000002 /* FoodSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSkill.swift; sourceTree = "<group>"; };
+		D200000003 /* DrinkSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrinkSkill.swift; sourceTree = "<group>"; };
+		D200000004 /* ReceiptSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptSkill.swift; sourceTree = "<group>"; };
+		D200000005 /* MedicationSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MedicationSkill.swift; sourceTree = "<group>"; };
+		D200000006 /* BookSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookSkill.swift; sourceTree = "<group>"; };
+		D200000007 /* BusinessCardSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BusinessCardSkill.swift; sourceTree = "<group>"; };
+		D200000008 /* QRCodeSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeSkill.swift; sourceTree = "<group>"; };
+		D200000009 /* FrameBufferService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameBufferService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +211,7 @@
 				B100000010 /* LocationManager.swift */,
 				B100000011 /* SpeechService.swift */,
 				214F2DB22F401AA00063539A /* PriceLookupService.swift */,
+				D200000009 /* FrameBufferService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -206,6 +225,14 @@
 				B100000006 /* FlightSkill.swift */,
 				B100000007 /* LandmarkSkill.swift */,
 				B100000008 /* MusicSkill.swift */,
+				D200000001 /* TranslationSkill.swift */,
+				D200000002 /* FoodSkill.swift */,
+				D200000003 /* DrinkSkill.swift */,
+				D200000004 /* ReceiptSkill.swift */,
+				D200000005 /* MedicationSkill.swift */,
+				D200000006 /* BookSkill.swift */,
+				D200000007 /* BusinessCardSkill.swift */,
+				D200000008 /* QRCodeSkill.swift */,
 			);
 			path = Skills;
 			sourceTree = "<group>";
@@ -330,6 +357,15 @@
 				21B2B8EE2F46A75800EAD15C /* PlaceSignalType.swift in Sources */,
 				A100000018 /* ScanDebugTrace.swift in Sources */,
 				214F2D9F2F400A8E0063539A /* HapticService.swift in Sources */,
+				C200000001 /* TranslationSkill.swift in Sources */,
+				C200000002 /* FoodSkill.swift in Sources */,
+				C200000003 /* DrinkSkill.swift in Sources */,
+				C200000004 /* ReceiptSkill.swift in Sources */,
+				C200000005 /* MedicationSkill.swift in Sources */,
+				C200000006 /* BookSkill.swift in Sources */,
+				C200000007 /* BusinessCardSkill.swift in Sources */,
+				C200000008 /* QRCodeSkill.swift in Sources */,
+				C200000009 /* FrameBufferService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -41,14 +41,20 @@ class PreScanRouter {
         
         let duration = CFAbsoluteTimeGetCurrent() - startTime
         
-        // If barcode found, that's the fastest path — product category, done
+        // If barcode found — distinguish QR codes from product barcodes
         if let barcode = barcode {
+            // QR codes that look like URLs, WiFi configs, or vCards route to QR skill
+            let isQR = barcode.hasPrefix("http") || barcode.hasPrefix("WIFI:")
+                || barcode.uppercased().contains("BEGIN:VCARD")
+                || barcode.contains("://")
+            let category: SkillCategory = isQR ? .qrCode : .product
+
             return PreScanResult(
-                predictedCategory: .product,
+                predictedCategory: category,
                 confidence: 1.0,
                 query: barcode,
                 detectedText: texts,
-                detectedBarcode: barcode,
+                detectedBarcode: isQR ? nil : barcode,
                 isAnimal: false,
                 topClassifications: classifications.map { $0.label },
                 duration: duration
@@ -256,29 +262,100 @@ class PreScanRouter {
             return Prediction(category: .landmark, confidence: min(topConfidence + 0.05, 0.85), query: query)
         }
         
+        // --- FOOD detection (prepared meals, plates of food) ---
+        let foodKeywords: Set<String> = [
+            "pizza", "hamburger", "hot_dog", "taco", "burrito", "sushi",
+            "salad", "soup", "pasta", "steak", "sandwich", "waffle",
+            "pancake", "omelette", "noodle", "rice", "curry", "bread",
+            "cake", "pie", "ice_cream", "donut", "cookie", "pretzel",
+            "french_fries", "fried_chicken", "dinner", "lunch", "meal"
+        ]
+        if labels.contains(where: { label in foodKeywords.contains(where: { label.contains($0) }) }) {
+            let query = classifications.prefix(3).map { cleanIdentifier($0.label) }.joined(separator: ", ")
+            return Prediction(category: .food, confidence: min(topConfidence + 0.1, 0.85), query: query)
+        }
+
+        // --- DRINK detection (wine, beer, coffee, bottles with labels) ---
+        let drinkKeywords: Set<String> = [
+            "wine_bottle", "beer_bottle", "beer_glass", "wine_glass",
+            "cocktail", "espresso", "coffee", "red_wine", "champagne",
+            "goblet", "whiskey"
+        ]
+        if labels.contains(where: { label in drinkKeywords.contains(where: { label.contains($0) }) }) {
+            let textHint = texts.prefix(3).joined(separator: " ")
+            let classHint = classifications.first.map { cleanIdentifier($0.label) } ?? "drink"
+            let query = textHint.isEmpty ? classHint : textHint
+            return Prediction(category: .drink, confidence: min(topConfidence + 0.1, 0.85), query: query)
+        }
+
+        // --- MEDICATION detection ---
+        let medicationKeywords: Set<String> = [
+            "pill", "medicine", "capsule", "tablet", "prescription",
+            "pharmacy", "vitamin", "supplement"
+        ]
+        let medicationTextHints = ["mg", "mcg", "tablet", "capsule", "rx", "ndc", "drug facts", "dosage"]
+        let hasMedText = medicationTextHints.contains(where: { allText.contains($0) })
+        if labels.contains(where: { label in medicationKeywords.contains(where: { label.contains($0) }) }) || hasMedText {
+            let query = texts.prefix(5).joined(separator: " ")
+            return Prediction(category: .medication, confidence: hasMedText ? 0.8 : 0.65, query: query)
+        }
+
+        // --- BOOK detection ---
+        let bookKeywords: Set<String> = [
+            "book_jacket", "comic_book", "notebook"
+        ]
+        let bookTextHints = ["isbn", "author", "chapter", "edition", "published"]
+        let hasBookText = bookTextHints.contains(where: { allText.contains($0) })
+        if labels.contains(where: { label in bookKeywords.contains(where: { label.contains($0) }) }) || hasBookText {
+            let query = texts.prefix(5).joined(separator: " ")
+            return Prediction(category: .book, confidence: hasBookText ? 0.75 : 0.6, query: query)
+        }
+
+        // --- RECEIPT detection (text-heavy with dollar signs, totals) ---
+        let receiptHints = ["total", "subtotal", "$", "tax", "receipt", "change due", "visa", "mastercard", "payment"]
+        let hasReceiptText = receiptHints.filter({ allText.contains($0) }).count >= 2
+        if hasReceiptText {
+            let query = texts.joined(separator: " ")
+            return Prediction(category: .receipt, confidence: 0.8, query: query)
+        }
+
+        // --- BUSINESS CARD detection (name + contact patterns) ---
+        let cardHints = ["@", ".com", ".org", "tel:", "phone:", "email:", "linkedin"]
+        let hasCardText = cardHints.filter({ allText.contains($0) }).count >= 2
+        if hasCardText && texts.count >= 3 && texts.count <= 15 {
+            let query = texts.joined(separator: " ")
+            return Prediction(category: .businessCard, confidence: 0.75, query: query)
+        }
+
         // --- PRODUCT detection (packaged goods, electronics, etc.) ---
         let productKeywords: Set<String> = [
             "bottle", "can", "box", "package", "container", "carton",
             "laptop", "phone", "keyboard", "mouse", "monitor", "headphone",
             "speaker", "camera", "remote", "controller", "watch", "glasses",
             "shoe", "sneaker", "bag", "backpack", "suitcase", "envelope",
-            "book", "magazine", "newspaper", "pen", "pencil", "cup", "mug",
+            "magazine", "newspaper", "pen", "pencil", "cup", "mug",
             "plate", "bowl", "fork", "knife", "spoon", "toothbrush"
         ]
         if labels.contains(where: { label in productKeywords.contains(where: { label.contains($0) }) }) {
-            // Include any detected text (brand names, labels)
             let textHint = texts.prefix(3).joined(separator: " ")
             let classHint = classifications.first.map { cleanIdentifier($0.label) } ?? "product"
             let query = textHint.isEmpty ? classHint : textHint
             return Prediction(category: .product, confidence: min(topConfidence + 0.05, 0.8), query: query)
         }
-        
+
+        // --- TRANSLATION detection (non-ASCII text-heavy images) ---
+        let nonAsciiCount = texts.filter { $0.unicodeScalars.contains(where: { !$0.isASCII }) }.count
+        if nonAsciiCount >= 2 {
+            let query = texts.joined(separator: " ")
+            return Prediction(category: .translation, confidence: 0.75, query: query)
+        }
+
         // --- TEXT-heavy images → likely landmark/sign or product ---
         if texts.count > 3 {
             let query = texts.prefix(5).joined(separator: " ")
             return Prediction(category: .landmark, confidence: 0.5, query: query)
         }
-        
+
         // --- Fallback: use top classification but low confidence ---
         let fallbackQuery = classifications.prefix(3).map { cleanIdentifier($0.label) }.joined(separator: ", ")
         return Prediction(category: .unknown, confidence: max(topConfidence, 0.3), query: fallbackQuery)
