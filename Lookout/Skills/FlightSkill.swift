@@ -226,16 +226,14 @@ class FlightSkill: LookoutSkill {
             let airlineName = flight["airline_name"] as? String
                 ?? (flight["airline"] as? [String: Any])?["name"] as? String
 
-            // Route info
-            let originCode = flight["orig_iata"] as? String
-                ?? (flight["airport"] as? [String: Any])?["origin"] as? [String: Any]
-                    .flatMap { $0["iata"] as? String }
+            // Route info — try multiple possible response shapes
+            let originCode: String? = flight["orig_iata"] as? String
+                ?? ((flight["airport"] as? [String: Any])?["origin"] as? [String: Any])?["iata"] as? String
                 ?? (flight["origin"] as? [String: Any])?["iata"] as? String
                 ?? flight["origin"] as? String
 
-            let destCode = flight["dest_iata"] as? String
-                ?? (flight["airport"] as? [String: Any])?["destination"] as? [String: Any]
-                    .flatMap { $0["iata"] as? String }
+            let destCode: String? = flight["dest_iata"] as? String
+                ?? ((flight["airport"] as? [String: Any])?["destination"] as? [String: Any])?["iata"] as? String
                 ?? (flight["destination"] as? [String: Any])?["iata"] as? String
                 ?? flight["destination"] as? String
 

@@ -36,6 +36,10 @@ class LookoutViewModel: ObservableObject {
     @Published var conversationMessages: [ConversationMessage] = []
     @Published var isAskingFollowUp = false
     @Published var currentTranscript = ""
+
+    // Pre-scan question (user types/says a question before scanning)
+    @Published var preScanQuestion: String = ""
+    private var pendingGlassesQuestion: String?
     
     // Face matches for current scan
     @Published var currentFaceMatches: [FaceMatch] = []
@@ -201,10 +205,14 @@ class LookoutViewModel: ObservableObject {
         // Wire photo capture to our pipeline
         glassesService.onPhotoCaptured = { [weak self] imageData in
             Task { @MainActor [weak self] in
-                self?.processGlassesPhoto(imageData)
+                guard let self else { return }
+                // Consume any pending question from voice trigger
+                let question = self.pendingGlassesQuestion
+                self.pendingGlassesQuestion = nil
+                self.processGlassesPhoto(imageData, userQuestion: question)
             }
         }
-        
+
         // Wire hardware camera button — fires when user presses camera button on glasses
         glassesService.cameraButtonEnabled = settings.glassesCameraButtonEnabled
         glassesService.onCameraButtonCaptured = { [weak self] imageData in
@@ -226,15 +234,17 @@ class LookoutViewModel: ObservableObject {
         }
 
         // Wire voice trigger — use glasses camera if connected, phone camera if not
-        glassesService.onVoiceTriggerDetected = { [weak self] in
+        glassesService.onVoiceTriggerDetected = { [weak self] question in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.haptics.capturePressed()
                 if self.glassesService.isGlassesConnected {
+                    // Store question for when photo arrives via onPhotoCaptured
+                    self.pendingGlassesQuestion = question
                     self.glassesService.capturePhoto()
                 } else {
                     // Glasses mode is on but glasses aren't connected — use phone camera
-                    self.captureAndAnalyze()
+                    self.captureAndAnalyze(userQuestion: question)
                 }
             }
         }
@@ -258,10 +268,10 @@ class LookoutViewModel: ObservableObject {
         glassesService.triggerPhrase = settings.glassesTriggerPhrase
         glassesService.triggerEnabled = true
         
-        glassesService.onVoiceTriggerDetected = { [weak self] in
+        glassesService.onVoiceTriggerDetected = { [weak self] question in
             Task { @MainActor [weak self] in
                 self?.haptics.capturePressed()
-                self?.captureAndAnalyze()
+                self?.captureAndAnalyze(userQuestion: question)
             }
         }
         // startVoiceTriggerListening() is called from startVoiceTriggerIfReady()
@@ -282,9 +292,11 @@ class LookoutViewModel: ObservableObject {
     /// Process a photo captured from the glasses — runs the same pipeline as the phone camera.
     /// In audio-only mode, skips visual UI updates and just speaks results.
     /// When hands-free is enabled, enters the conversation state machine after speaking.
-    private func processGlassesPhoto(_ imageData: Data) {
+    private func processGlassesPhoto(_ imageData: Data, userQuestion: String? = nil) {
         guard let settings = settings, let skillRouter = skillRouter else { return }
         guard settings.hasValidAPIKey else { return }
+
+        let question = userQuestion
 
         let audioOnly = isAudioOnlyMode
         isCapturing = true
@@ -320,6 +332,7 @@ class LookoutViewModel: ObservableObject {
                     imageData,
                     location: locationManager.currentLocation,
                     environment: environmentSignals,
+                    userQuestion: question,
                     onStatusUpdate: audioOnly ? nil : { [weak self] status in
                         Task { @MainActor [weak self] in
                             guard let self else { return }
@@ -368,7 +381,8 @@ class LookoutViewModel: ObservableObject {
                     aiResponse: processed.aiResponse,
                     skillResult: processed.skillResult,
                     faceMatches: processed.faceMatches,
-                    nearbyPlace: processed.nearbyPlace
+                    nearbyPlace: processed.nearbyPlace,
+                    userQuestion: question
                 )
                 conversationMessages = conversationService?.messages ?? []
 
@@ -381,6 +395,8 @@ class LookoutViewModel: ObservableObject {
                     conversationTurnCount = 0
                 }
 
+                var didStartSpeech = false
+
                 if settings.smartNarrationEnabled {
                     let narrationDebug = try? await smartNarration?.generateNarrationDebug(
                         skillResult: processed.skillResult,
@@ -389,10 +405,12 @@ class LookoutViewModel: ObservableObject {
                         nearbyPlace: processed.nearbyPlace,
                         userContext: contextString,
                         currentItemTitle: processed.skillResult.title,
-                        currentItemRepeatCount: currentItemRepeatCount
+                        currentItemRepeatCount: currentItemRepeatCount,
+                        userQuestion: question
                     )
 
                     if let text = narrationDebug?.outputText, !text.isEmpty {
+                        didStartSpeech = true
                         if useHandsFree {
                             speechService.speak(text) { [weak self] in
                                 Task { @MainActor [weak self] in
@@ -405,22 +423,31 @@ class LookoutViewModel: ObservableObject {
                     }
                 } else {
                     let segments = speechService.buildSpeechText(from: processed.skillResult)
-                    if useHandsFree {
-                        let combined = segments.joined(separator: " ")
-                        speechService.speak(combined) { [weak self] in
-                            Task { @MainActor [weak self] in
-                                self?.startHandsFreeFollowUp()
+                    let combined = segments.joined(separator: " ")
+                    if !combined.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        didStartSpeech = true
+                        if useHandsFree {
+                            speechService.speak(combined) { [weak self] in
+                                Task { @MainActor [weak self] in
+                                    self?.startHandsFreeFollowUp()
+                                }
                             }
+                        } else {
+                            speechService.speakSegments(segments)
                         }
-                    } else {
-                        speechService.speakSegments(segments)
                     }
                 }
 
                 isCapturing = false
-                if !useHandsFree {
+                // If hands-free speech started, the completion callback will handle state reset.
+                // Otherwise, return to idle immediately.
+                if !useHandsFree || !didStartSpeech {
                     glassesFlowState = .idle
                     glassesService.resumeVoiceTrigger()
+                    if useHandsFree && !didStartSpeech {
+                        // Hands-free was requested but narration produced nothing — start follow-up anyway
+                        startHandsFreeFollowUp()
+                    }
                 }
 
             } catch {
@@ -738,14 +765,14 @@ class LookoutViewModel: ObservableObject {
     
     // MARK: - Capture & Analyze (Enhanced Pipeline)
     
-    func captureAndAnalyze() {
+    func captureAndAnalyze(userQuestion: String? = nil) {
         // Wake camera if sleeping (user tapped scan while camera was off)
         if isCameraSleeping {
             wakeCamera()
             // Give the session a moment to restart before capturing
             Task {
                 try? await Task.sleep(nanoseconds: 500_000_000)
-                self.captureAndAnalyze()
+                self.captureAndAnalyze(userQuestion: userQuestion)
             }
             return
         }
@@ -765,10 +792,21 @@ class LookoutViewModel: ObservableObject {
             return
         }
 
+        // Capture the user's pre-scan question (from text field or voice trigger)
+        let question: String? = {
+            if let uq = userQuestion, !uq.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return uq
+            }
+            let typed = preScanQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+            return typed.isEmpty ? nil : typed
+        }()
+        preScanQuestion = ""
+
         // If glasses are connected, delegate to the glasses camera.
         // capturePhoto() fires onPhotoCaptured → processGlassesPhoto(),
         // which runs the full AI pipeline — no need to continue here.
         if settings.glassesMode && glassesService.isGlassesConnected {
+            pendingGlassesQuestion = question
             glassesService.capturePhoto()   // processGlassesPhoto handles haptic + UI
             return
         }
@@ -843,6 +881,7 @@ class LookoutViewModel: ObservableObject {
                     imageData,
                     location: locationManager.currentLocation,
                     environment: environmentSignals,
+                    userQuestion: question,
                     onStatusUpdate: { [weak self] status in
                         Task { @MainActor [weak self] in
                             guard let self else { return }
@@ -852,7 +891,7 @@ class LookoutViewModel: ObservableObject {
                         }
                     }
                 )
-                
+
                 query.aiResponse = processed.aiResponse
                 query.skillResult = processed.skillResult
                 query.status = .complete
@@ -890,17 +929,19 @@ class LookoutViewModel: ObservableObject {
                     aiResponse: processed.aiResponse,
                     skillResult: processed.skillResult,
                     faceMatches: processed.faceMatches,
-                    nearbyPlace: processed.nearbyPlace
+                    nearbyPlace: processed.nearbyPlace,
+                    userQuestion: question
                 )
                 conversationMessages = conversationService?.messages ?? []
-                
+
                 syncVoiceSettings()
                 if settings.voiceOutputEnabled {
                     if settings.smartNarrationEnabled {
                         narrationDebug = await speakSmartNarration(
                             processed: processed,
                             contextString: contextString,
-                            currentItemRepeatCount: currentItemRepeatCount
+                            currentItemRepeatCount: currentItemRepeatCount,
+                            userQuestion: question
                         )
                     } else {
                         let segments = speechService.buildSpeechText(from: processed.skillResult)
@@ -982,7 +1023,8 @@ class LookoutViewModel: ObservableObject {
     private func speakSmartNarration(
         processed: ProcessedResult,
         contextString: String,
-        currentItemRepeatCount: Int
+        currentItemRepeatCount: Int,
+        userQuestion: String? = nil
     ) async -> NarrationDebugResult? {
         // Build face relationships dictionary for richer narration
         let faceRelationships = Dictionary(
@@ -1002,7 +1044,8 @@ class LookoutViewModel: ObservableObject {
                 userContext: contextString,
                 currentItemTitle: processed.skillResult.title,
                 currentItemRepeatCount: currentItemRepeatCount,
-                faceRelationships: faceRelationships
+                faceRelationships: faceRelationships,
+                userQuestion: userQuestion
             )
 
             if let text = narrationDebug?.outputText, !text.isEmpty {
@@ -1447,7 +1490,7 @@ class LookoutViewModel: ObservableObject {
         }
 
         // Timeout — if no speech after configured seconds, return to idle
-        let timeout = settings?.followUpTimeoutSeconds ?? 12.0
+        let timeout = settings.followUpTimeoutSeconds
         followUpTimeoutTask?.cancel()
         followUpTimeoutTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
@@ -1802,3 +1845,4 @@ class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         continuation = nil
     }
 }
+

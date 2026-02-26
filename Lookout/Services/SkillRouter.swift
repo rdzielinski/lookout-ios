@@ -62,6 +62,7 @@ class SkillRouter: ObservableObject {
         _ imageData: Data,
         location: CLLocation?,
         environment: ScanEnvironmentSignals? = nil,
+        userQuestion: String? = nil,
         onStatusUpdate: ((LookoutQuery.QueryStatus) -> Void)? = nil
     ) async throws -> ProcessedResult {
         guard let image = UIImage(data: imageData) else {
@@ -152,7 +153,7 @@ class SkillRouter: ObservableObject {
                 query: preScan.query,
                 location: location
             )
-            async let aiTask = visionService.analyzeImage(image)
+            async let aiTask = visionService.analyzeImage(image, userQuestion: userQuestion)
             
             let speculativeResult = await speculativeSkillTask
             let aiResponse: AIVisionResponse
@@ -260,7 +261,7 @@ class SkillRouter: ObservableObject {
         
         onStatusUpdate?(.routing)
         
-        let aiResponse = try await visionService.analyzeImage(image)
+        let aiResponse = try await visionService.analyzeImage(image, userQuestion: userQuestion)
         HapticService.shared.categorized()
         
         onStatusUpdate?(Self.executingStatus(for: aiResponse.skillCategory))

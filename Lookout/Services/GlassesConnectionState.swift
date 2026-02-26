@@ -38,7 +38,7 @@ class GlassesService: ObservableObject {
 
     // MARK: - Callbacks
     var onPhotoCaptured: ((Data) -> Void)?
-    var onVoiceTriggerDetected: (() -> Void)?
+    var onVoiceTriggerDetected: ((String?) -> Void)?
     var onCameraButtonCaptured: ((Data) -> Void)?
 
     /// When true, the next photo from photoDataPublisher was requested programmatically
@@ -130,7 +130,7 @@ class GlassesService: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 print("🕶️ Mock voice trigger received")
-                self.onVoiceTriggerDetected?()
+                self.onVoiceTriggerDetected?(nil)
             }
         }
         mockObservers.append(voiceObserver)
@@ -218,6 +218,7 @@ class GlassesService: ObservableObject {
                         deviceStreamTask?.cancel()
                         connectionTimeoutTask?.cancel()
                         isGlassesConnected = false
+                        tearDownStreamSession()
                         #if DEBUG
                         print("🕶️ Registration lost after being registered — cancelling device stream")
                         #endif
@@ -255,6 +256,7 @@ class GlassesService: ObservableObject {
                         deviceStreamTask?.cancel()
                         connectionTimeoutTask?.cancel()
                         isGlassesConnected = false
+                        tearDownStreamSession()
                         connectionState = .searching
                         #if DEBUG
                         print("🕶️ Registration lost (unavailable) — waiting for SDK to recover...")
@@ -590,6 +592,26 @@ class GlassesService: ObservableObject {
         #endif
     }
 
+    /// Tears down the existing stream session and clears listener tokens.
+    /// Call this when registration is lost or the session becomes stale.
+    private func tearDownStreamSession() {
+        #if canImport(MWDATCore) && canImport(MWDATCamera)
+        if let session = streamSession {
+            Task { await session.stop() }
+        }
+        streamSession = nil
+        deviceSelector = nil
+        photoDataListenerToken = nil
+        stateListenerToken = nil
+        errorListenerToken = nil
+        videoFrameListenerToken = nil
+        cameraPermissionGranted = false
+        #if DEBUG
+        print("🕶️ Stream session torn down")
+        #endif
+        #endif
+    }
+
     /// Sets up and starts the persistent stream session after glasses connect.
     /// Call this once after connection + permission are established.
     func startStreamSession() {
@@ -701,15 +723,21 @@ class GlassesService: ObservableObject {
     func capturePhoto() {
         #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task { @MainActor in
-            // If no stream session yet, start one first
-            if streamSession == nil {
+            // If no stream session, or existing session isn't streaming, (re)create it
+            if streamSession == nil || connectionState != .streaming {
+                if streamSession != nil {
+                    #if DEBUG
+                    print("🕶️ Stream session exists but not streaming (state: \(connectionState.rawValue)) — restarting...")
+                    #endif
+                    tearDownStreamSession()
+                }
                 #if DEBUG
-                print("🕶️ No stream session — starting one before capture...")
+                print("🕶️ No active stream session — starting one before capture...")
                 #endif
                 guard await ensureCameraPermission() else { return }
                 startStreamSession()
-                // Wait a moment for the session to start streaming
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                // Wait for the session to start streaming
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
             }
 
             guard let session = streamSession else {
@@ -718,7 +746,7 @@ class GlassesService: ObservableObject {
             }
 
             #if DEBUG
-            print("🕶️ Capturing photo from glasses (programmatic)...")
+            print("🕶️ Capturing photo from glasses (programmatic), connection state: \(connectionState.rawValue)")
             #endif
             expectingProgrammaticCapture = true
             session.capturePhoto(format: .jpeg)
@@ -936,13 +964,19 @@ class GlassesService: ObservableObject {
                     let transcript = result.bestTranscription.formattedString.lowercased()
 
                     // Check for trigger phrase
-                    if transcript.contains(self.triggerPhrase.lowercased()) {
+                    let trigger = self.triggerPhrase.lowercased()
+                    if let triggerRange = transcript.range(of: trigger) {
+                        // Extract any words after the trigger phrase as a user question
+                        let afterTrigger = transcript[triggerRange.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+                        let userQuestion: String? = afterTrigger.isEmpty ? nil : afterTrigger
+
                         #if DEBUG
                         print("🎤 🔥 Trigger detected! \"\(self.triggerPhrase)\" in: \"\(transcript)\"")
+                        if let q = userQuestion { print("🎤 💬 Pre-scan question: \"\(q)\"") }
                         #endif
 
-                        // Fire the callback
-                        self.onVoiceTriggerDetected?()
+                        // Fire the callback with optional question
+                        self.onVoiceTriggerDetected?(userQuestion)
 
                         // Reset — stop, wait for scan to complete, then restart
                         self.consecutiveErrors = 0

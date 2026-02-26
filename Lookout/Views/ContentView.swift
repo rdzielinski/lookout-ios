@@ -133,6 +133,10 @@ struct ContentView: View {
                     resultAndConversationArea
                 }
                 Spacer()
+                // Pre-scan question field
+                if !viewModel.isAudioOnlyMode && !viewModel.showResult && !viewModel.isCapturing {
+                    preScanQuestionField
+                }
                 if !viewModel.isAudioOnlyMode { bottomControls }
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.isOfflineMode)
@@ -142,6 +146,7 @@ struct ContentView: View {
             // MARK: - Viewfinder Reticle
             if !viewModel.isAudioOnlyMode && !viewModel.showResult {
                 ScanReticleView(isScanning: viewModel.isCapturing)
+                    .allowsHitTesting(false)
             }
 
             // Voice recording overlay
@@ -524,6 +529,32 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Pre-Scan Question
+    private var preScanQuestionField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "questionmark.bubble")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.5))
+            TextField("Ask something...", text: $viewModel.preScanQuestion)
+                .textFieldStyle(.plain)
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .submitLabel(.done)
+                .onSubmit {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+        )
+        .padding(.horizontal, 40)
+        .padding(.bottom, 8)
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
+    }
+
     // MARK: - Bottom Controls
     private var bottomControls: some View {
         HStack(spacing: 14) {
@@ -551,6 +582,7 @@ struct ContentView: View {
 
             // MARK: - Scan Button
             Button(action: {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                     viewModel.captureAndAnalyze()
                 }
@@ -867,7 +899,7 @@ struct ScanReticleView: View {
                         .foregroundStyle(.white.opacity(0.7))
                         .padding(.horizontal, 16).padding(.vertical, 8)
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .padding(.bottom, 130)
+                        .padding(.bottom, 220)
                 }
             }
         }

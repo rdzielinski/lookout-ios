@@ -23,7 +23,8 @@ class SmartNarrationService {
         userContext: String = "",
         currentItemTitle: String = "",
         currentItemRepeatCount: Int? = nil,
-        faceRelationships: [String: String] = [:]
+        faceRelationships: [String: String] = [:],
+        userQuestion: String? = nil
     ) async throws -> String {
         let debug = try await generateNarrationDebug(
             skillResult: skillResult,
@@ -33,7 +34,8 @@ class SmartNarrationService {
             userContext: userContext,
             currentItemTitle: currentItemTitle,
             currentItemRepeatCount: currentItemRepeatCount,
-            faceRelationships: faceRelationships
+            faceRelationships: faceRelationships,
+            userQuestion: userQuestion
         )
         return debug.outputText
     }
@@ -46,7 +48,8 @@ class SmartNarrationService {
         userContext: String = "",
         currentItemTitle: String = "",
         currentItemRepeatCount: Int? = nil,
-        faceRelationships: [String: String] = [:]
+        faceRelationships: [String: String] = [:],
+        userQuestion: String? = nil
     ) async throws -> NarrationDebugResult {
         let prompt = buildNarrationPrompt(
             skillResult: skillResult,
@@ -56,7 +59,8 @@ class SmartNarrationService {
             userContext: userContext,
             currentItemTitle: currentItemTitle,
             currentItemRepeatCount: currentItemRepeatCount,
-            faceRelationships: faceRelationships
+            faceRelationships: faceRelationships,
+            userQuestion: userQuestion
         )
         
         let output: String
@@ -85,11 +89,17 @@ class SmartNarrationService {
         userContext: String,
         currentItemTitle: String,
         currentItemRepeatCount: Int?,
-        faceRelationships: [String: String] = [:]
+        faceRelationships: [String: String] = [:],
+        userQuestion: String? = nil
     ) -> String {
-        
+
         var contextParts: [String] = []
-        
+
+        // User's specific question (if any)
+        if let question = userQuestion, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            contextParts.append("User's question: \"\(question)\" — focus your response on answering this specifically.")
+        }
+
         // What was identified
         contextParts.append("Category: \(skillResult.category.displayName)")
         contextParts.append("Title: \(skillResult.title)")
