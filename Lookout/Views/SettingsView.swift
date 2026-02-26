@@ -91,26 +91,9 @@ struct SettingsView: View {
 
             if settings.glassesMode {
                 glassDivider()
-                glassesConnectionCard
+                GlassesConnectionCardView(glassesService: glassesService)
                 glassDivider()
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Trigger Phrase")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.5))
-                    TextField("lookout", text: $settings.glassesTriggerPhrase)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(.white)
-                }
-                glassDivider()
-                glassToggle("Auto-Listen on Connect", icon: "mic.fill", isOn: $settings.glassesAutoListen)
-                glassDivider()
-                glassToggle("Camera Button Trigger", icon: "camera.circle.fill", isOn: $settings.glassesCameraButtonEnabled)
-                glassDivider()
-                glassToggle("Audio-Only Mode", icon: "speaker.wave.2.fill", isOn: $settings.audioOnlyGlasses)
-                glassDivider()
-                glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
+                glassesToggleList
             }
 
             settingsFooter(
@@ -122,111 +105,25 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private var glassesConnectionCard: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Image(systemName: glassesConnectionIcon)
-                    .font(.footnote)
-                    .foregroundStyle(glassesConnectionColor)
-                    .frame(width: 20)
-                Text(glassesConnectionLabel)
-                    .font(.subheadline)
-                    .foregroundStyle(.white)
-                Spacer()
-                Text(glassesService.connectionState.rawValue)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(glassesConnectionColor)
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(glassesConnectionColor.opacity(0.15), in: Capsule())
-            }
-
-            if let attemptInfo = glassesService.connectionAttemptInfo,
-               glassesService.connectionState == .connecting {
-                HStack(spacing: 6) {
-                    ProgressView().tint(.orange).scaleEffect(0.7)
-                    Text(attemptInfo)
-                        .font(.caption).foregroundStyle(.orange.opacity(0.8))
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 30)
-            }
-
-            if glassesService.connectionState == .error,
-               let errorMsg = glassesService.lastError {
-                Text(errorMsg)
-                    .font(.caption)
-                    .foregroundStyle(.red.opacity(0.9))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 30)
-            }
-
-            glassesActionButtons
-
-            if let name = glassesService.deviceName {
-                HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption2).foregroundStyle(.green)
-                    Text(name)
-                        .font(.caption).foregroundStyle(.white.opacity(0.5))
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 30)
-            }
+    private var glassesToggleList: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Trigger Phrase")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.5))
+            TextField("lookout", text: $settings.glassesTriggerPhrase)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .font(.system(.body, design: .monospaced))
+                .foregroundStyle(.white)
         }
-    }
-
-    @ViewBuilder
-    private var glassesActionButtons: some View {
-        HStack(spacing: 10) {
-            if glassesService.connectionState == .disconnected || glassesService.connectionState == .error {
-                Button {
-                    glassesService.retryConnection()
-                } label: {
-                    Label(
-                        glassesService.connectionState == .error ? "Retry" : "Connect Glasses",
-                        systemImage: glassesService.connectionState == .error ? "arrow.clockwise" : "link"
-                    )
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(.cyan, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-            } else if glassesService.connectionState == .connecting {
-                Button {
-                    glassesService.disconnect()
-                } label: {
-                    Label("Cancel", systemImage: "xmark")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-            } else if glassesService.connectionState == .connected || glassesService.connectionState == .streaming {
-                Button {
-                    glassesService.disconnect()
-                } label: {
-                    Label("Disconnect", systemImage: "link.badge.plus")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
-            }
-
-            Button {
-                GlassesService.openBluetoothSettings()
-            } label: {
-                Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
-        }
+        glassDivider()
+        glassToggle("Auto-Listen on Connect", icon: "mic.fill", isOn: $settings.glassesAutoListen)
+        glassDivider()
+        glassToggle("Camera Button Trigger", icon: "camera.circle.fill", isOn: $settings.glassesCameraButtonEnabled)
+        glassDivider()
+        glassToggle("Audio-Only Mode", icon: "speaker.wave.2.fill", isOn: $settings.audioOnlyGlasses)
+        glassDivider()
+        glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
     }
 
     // MARK: - Intelligence & Personal
@@ -653,35 +550,6 @@ struct SettingsView: View {
         speechService.selectedVoice = settings.selectedVoiceStyle
     }
 
-    // MARK: - Glasses Connection Helpers
-
-    private var glassesConnectionColor: Color {
-        switch glassesService.connectionState {
-        case .connected, .streaming: return .green
-        case .connecting, .searching: return .orange
-        case .error: return .red
-        case .disconnected: return .white.opacity(0.4)
-        }
-    }
-
-    private var glassesConnectionIcon: String {
-        switch glassesService.connectionState {
-        case .connected, .streaming: return "checkmark.circle.fill"
-        case .connecting, .searching: return "antenna.radiowaves.left.and.right"
-        case .error: return "exclamationmark.triangle.fill"
-        case .disconnected: return "link.badge.plus"
-        }
-    }
-
-    private var glassesConnectionLabel: String {
-        switch glassesService.connectionState {
-        case .connected, .streaming: return "Glasses Connected"
-        case .connecting: return "Looking for glasses..."
-        case .searching: return "Registering..."
-        case .error: return "Connection Failed"
-        case .disconnected: return "Not Connected"
-        }
-    }
 }
 
 // MARK: - Skill Status Row (preserved for compatibility)
@@ -725,6 +593,167 @@ struct SkillStatusRow: View {
                 .background(status.color.opacity(0.15))
                 .foregroundStyle(status.color)
                 .clipShape(Capsule())
+        }
+    }
+}
+
+// MARK: - Glasses Connection Card (separate struct to avoid type-explosion crash)
+
+struct GlassesConnectionCardView: View {
+    @ObservedObject var glassesService: GlassesService
+
+    var body: some View {
+        VStack(spacing: 10) {
+            connectionStatusRow
+            attemptInfoRow
+            errorRow
+            actionButtons
+            deviceNameRow
+        }
+    }
+
+    // MARK: - Sub-views
+
+    @ViewBuilder
+    private var connectionStatusRow: some View {
+        HStack {
+            Image(systemName: connectionIcon)
+                .font(.footnote)
+                .foregroundStyle(connectionColor)
+                .frame(width: 20)
+            Text(connectionLabel)
+                .font(.subheadline)
+                .foregroundStyle(.white)
+            Spacer()
+            Text(glassesService.connectionState.rawValue)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(connectionColor)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(connectionColor.opacity(0.15), in: Capsule())
+        }
+    }
+
+    @ViewBuilder
+    private var attemptInfoRow: some View {
+        if let attemptInfo = glassesService.connectionAttemptInfo,
+           glassesService.connectionState == .connecting {
+            HStack(spacing: 6) {
+                ProgressView().tint(.orange).scaleEffect(0.7)
+                Text(attemptInfo)
+                    .font(.caption).foregroundStyle(.orange.opacity(0.8))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 30)
+        }
+    }
+
+    @ViewBuilder
+    private var errorRow: some View {
+        if glassesService.connectionState == .error,
+           let errorMsg = glassesService.lastError {
+            Text(errorMsg)
+                .font(.caption)
+                .foregroundStyle(.red.opacity(0.9))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 30)
+        }
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        HStack(spacing: 10) {
+            if glassesService.connectionState == .disconnected || glassesService.connectionState == .error {
+                Button {
+                    glassesService.retryConnection()
+                } label: {
+                    Label(
+                        glassesService.connectionState == .error ? "Retry" : "Connect Glasses",
+                        systemImage: glassesService.connectionState == .error ? "arrow.clockwise" : "link"
+                    )
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.cyan, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+            } else if glassesService.connectionState == .connecting {
+                Button {
+                    glassesService.disconnect()
+                } label: {
+                    Label("Cancel", systemImage: "xmark")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+            } else if glassesService.connectionState == .connected || glassesService.connectionState == .streaming {
+                Button {
+                    glassesService.disconnect()
+                } label: {
+                    Label("Disconnect", systemImage: "link.badge.plus")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+            }
+
+            Button {
+                GlassesService.openBluetoothSettings()
+            } label: {
+                Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var deviceNameRow: some View {
+        if let name = glassesService.deviceName {
+            HStack(spacing: 4) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.caption2).foregroundStyle(.green)
+                Text(name)
+                    .font(.caption).foregroundStyle(.white.opacity(0.5))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.leading, 30)
+        }
+    }
+
+    // MARK: - Connection Helpers
+
+    private var connectionColor: Color {
+        switch glassesService.connectionState {
+        case .connected, .streaming: return .green
+        case .connecting, .searching: return .orange
+        case .error: return .red
+        case .disconnected: return .white.opacity(0.4)
+        }
+    }
+
+    private var connectionIcon: String {
+        switch glassesService.connectionState {
+        case .connected, .streaming: return "checkmark.circle.fill"
+        case .connecting, .searching: return "antenna.radiowaves.left.and.right"
+        case .error: return "exclamationmark.triangle.fill"
+        case .disconnected: return "link.badge.plus"
+        }
+    }
+
+    private var connectionLabel: String {
+        switch glassesService.connectionState {
+        case .connected, .streaming: return "Glasses Connected"
+        case .connecting: return "Looking for glasses..."
+        case .searching: return "Registering..."
+        case .error: return "Connection Failed"
+        case .disconnected: return "Not Connected"
         }
     }
 }
