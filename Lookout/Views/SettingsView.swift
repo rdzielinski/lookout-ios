@@ -19,560 +19,12 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        // AI Provider
-                        glassSection(
-                            header: "AI Provider",
-                            icon: "brain.head.profile",
-                            iconColor: .blue
-                        ) {
-                            Picker("AI Provider", selection: $settings.selectedProvider) {
-                                ForEach(AIProvider.allCases, id: \.self) { provider in
-                                    Label(provider.rawValue, systemImage: provider.iconName).tag(provider)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .colorMultiply(.white)
-
-                            settingsFooter("Choose which AI analyzes your camera feed.")
-                        }
-
-                        // API Keys
-                        glassSection(
-                            header: "API Keys",
-                            icon: "key.fill",
-                            iconColor: .yellow
-                        ) {
-                            apiKeyField(label: "Claude API Key", placeholder: "sk-ant-...", text: $settings.claudeAPIKey)
-                            glassDivider()
-                            apiKeyField(label: "OpenAI API Key", placeholder: "sk-...", text: $settings.openAIAPIKey)
-                            glassDivider()
-                            apiKeyField(label: "Google Places (Optional)", placeholder: "AIza...", text: $settings.googlePlacesAPIKey)
-                            glassDivider()
-                            apiKeyField(label: "FlightRadar24 (Optional)", placeholder: "fr24_...", text: $settings.flightradar24APIKey)
-                            settingsFooter("Stored locally on device. FlightRadar24 provides rich flight data (airline, route, aircraft type). Falls back to OpenSky (free) without FR24 key.")
-                        }
-
-                        // Meta Ray-Ban Glasses
-                        glassSection(
-                            header: "Meta Ray-Ban Glasses",
-                            icon: "eyeglasses",
-                            iconColor: .cyan
-                        ) {
-                            glassToggle("Glasses Mode", icon: "eyeglasses", isOn: $settings.glassesMode)
-
-                            if settings.glassesMode {
-                                glassDivider()
-
-                                // Connection status card
-                                VStack(spacing: 10) {
-                                    // Status row
-                                    HStack {
-                                        Image(systemName: glassesConnectionIcon)
-                                            .font(.footnote)
-                                            .foregroundStyle(glassesConnectionColor)
-                                            .frame(width: 20)
-                                        Text(glassesConnectionLabel)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.white)
-                                        Spacer()
-                                        Text(glassesService.connectionState.rawValue)
-                                            .font(.caption.weight(.medium))
-                                            .foregroundStyle(glassesConnectionColor)
-                                            .padding(.horizontal, 8).padding(.vertical, 4)
-                                            .background(glassesConnectionColor.opacity(0.15), in: Capsule())
-                                    }
-
-                                    // Attempt info during retry
-                                    if let attemptInfo = glassesService.connectionAttemptInfo,
-                                       glassesService.connectionState == .connecting {
-                                        HStack(spacing: 6) {
-                                            ProgressView().tint(.orange).scaleEffect(0.7)
-                                            Text(attemptInfo)
-                                                .font(.caption).foregroundStyle(.orange.opacity(0.8))
-                                        }
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.leading, 30)
-                                    }
-
-                                    // Error message
-                                    if glassesService.connectionState == .error,
-                                       let errorMsg = glassesService.lastError {
-                                        Text(errorMsg)
-                                            .font(.caption)
-                                            .foregroundStyle(.red.opacity(0.9))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .padding(.leading, 30)
-                                    }
-
-                                    // Action buttons
-                                    HStack(spacing: 10) {
-                                        if glassesService.connectionState == .disconnected || glassesService.connectionState == .error {
-                                            Button {
-                                                glassesService.retryConnection()
-                                            } label: {
-                                                Label(
-                                                    glassesService.connectionState == .error ? "Retry" : "Connect Glasses",
-                                                    systemImage: glassesService.connectionState == .error ? "arrow.clockwise" : "link"
-                                                )
-                                                .font(.subheadline.weight(.medium))
-                                                .foregroundStyle(.white)
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 10)
-                                                .background(.cyan, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                            }
-                                        } else if glassesService.connectionState == .connecting {
-                                            Button {
-                                                glassesService.disconnect()
-                                            } label: {
-                                                Label("Cancel", systemImage: "xmark")
-                                                    .font(.subheadline.weight(.medium))
-                                                    .foregroundStyle(.white)
-                                                    .frame(maxWidth: .infinity)
-                                                    .padding(.vertical, 10)
-                                                    .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                            }
-                                        } else if glassesService.connectionState == .connected || glassesService.connectionState == .streaming {
-                                            Button {
-                                                glassesService.disconnect()
-                                            } label: {
-                                                Label("Disconnect", systemImage: "link.badge.plus")
-                                                    .font(.subheadline.weight(.medium))
-                                                    .foregroundStyle(.red)
-                                                    .frame(maxWidth: .infinity)
-                                                    .padding(.vertical, 10)
-                                                    .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                            }
-                                        }
-
-                                        Button {
-                                            GlassesService.openBluetoothSettings()
-                                        } label: {
-                                            Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right")
-                                                .font(.subheadline.weight(.medium))
-                                                .foregroundStyle(.white)
-                                                .frame(maxWidth: .infinity)
-                                                .padding(.vertical, 10)
-                                                .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                        }
-                                    }
-
-                                    if let name = glassesService.deviceName {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.caption2).foregroundStyle(.green)
-                                            Text(name)
-                                                .font(.caption).foregroundStyle(.white.opacity(0.5))
-                                        }
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.leading, 30)
-                                    }
-                                }
-
-                                glassDivider()
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("Trigger Phrase")
-                                        .font(.caption.weight(.medium))
-                                        .foregroundStyle(.white.opacity(0.5))
-                                    TextField("lookout", text: $settings.glassesTriggerPhrase)
-                                        .textInputAutocapitalization(.never)
-                                        .autocorrectionDisabled()
-                                        .font(.system(.body, design: .monospaced))
-                                        .foregroundStyle(.white)
-                                }
-                                glassDivider()
-                                glassToggle("Auto-Listen on Connect", icon: "mic.fill", isOn: $settings.glassesAutoListen)
-                                glassDivider()
-                                glassToggle("Camera Button Trigger", icon: "camera.circle.fill", isOn: $settings.glassesCameraButtonEnabled)
-                                glassDivider()
-                                glassToggle("Audio-Only Mode", icon: "speaker.wave.2.fill", isOn: $settings.audioOnlyGlasses)
-                                glassDivider()
-                                glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
-                            }
-
-                            settingsFooter(
-                                settings.glassesMode
-                                ? "Say your trigger phrase or press the camera button on your glasses to scan. Results spoken through glasses speakers. Audio-Only skips the screen UI. Hands-Free auto-listens for follow-up questions."
-                                : "Connect Meta Ray-Ban for hands-free scanning. Requires Meta AI app."
-                            )
-                        }
-
-                        // Intelligence
-                        glassSection(
-                            header: "Intelligence",
-                            icon: "sparkles",
-                            iconColor: .purple
-                        ) {
-                            glassToggle("Smart Narration", icon: "waveform", isOn: $settings.smartNarrationEnabled)
-                            glassDivider()
-                            glassToggle("Face Recognition", icon: "person.crop.circle", isOn: $settings.faceRecognitionEnabled)
-                            glassDivider()
-                            glassToggle("Place Memory", icon: "mappin.circle.fill", isOn: $settings.placeMemoryEnabled)
-                            settingsFooter("Smart Narration uses AI to generate natural speech. Face Recognition remembers named people. Place Memory saves familiar locations.")
-                        }
-
-                        // Speed & Ambient
-                        glassSection(
-                            header: "Speed & Ambient",
-                            icon: "bolt.fill",
-                            iconColor: .yellow
-                        ) {
-                            glassToggle("Fast Model (Haiku)", icon: "hare", isOn: $settings.useFastModel)
-                            settingsFooter("Uses Claude Haiku for faster image classification (~1-2s faster). Slightly less accurate for ambiguous images.")
-                            glassDivider()
-                            glassToggle("Continuous Scan", icon: "arrow.triangle.2.circlepath", isOn: $settings.continuousScanEnabled)
-                            if settings.continuousScanEnabled {
-                                HStack {
-                                    Text("Interval")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.white.opacity(0.7))
-                                    Spacer()
-                                    Text("\(Int(settings.continuousScanInterval))s")
-                                        .font(.subheadline.monospacedDigit())
-                                        .foregroundStyle(.white)
-                                }
-                                Slider(value: $settings.continuousScanInterval, in: 5...30, step: 1)
-                                    .tint(.yellow)
-                            }
-                            settingsFooter("Periodically scans the camera and narrates what's around you.")
-                            glassDivider()
-                            glassToggle("Proactive Place Narration", icon: "location.fill", isOn: $settings.proactiveNarrationEnabled)
-                            settingsFooter("Speaks context when you arrive at a saved place.")
-                            glassDivider()
-                            glassToggle("Replay Buffer", icon: "backward.frame", isOn: $settings.replayBufferEnabled)
-                            settingsFooter("Keeps last 30 seconds of frames so you can ask 'What did I just see?'")
-                            glassDivider()
-                            glassToggle("Camera Auto-Sleep", icon: "moon.fill", isOn: $settings.cameraAutoSleepEnabled)
-                            if settings.cameraAutoSleepEnabled {
-                                HStack {
-                                    Text("Timeout")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.white.opacity(0.7))
-                                    Spacer()
-                                    Text("\(Int(settings.cameraAutoSleepDelay))s")
-                                        .font(.subheadline.monospacedDigit())
-                                        .foregroundStyle(.white)
-                                }
-                                Slider(value: $settings.cameraAutoSleepDelay, in: 30...300, step: 15)
-                                    .tint(.indigo)
-                            }
-                            settingsFooter("Automatically turns off the camera after inactivity to save battery. Say \"camera on\" or tap the bolt icon to wake.")
-                        }
-
-                        // About You
-                        glassSection(
-                            header: "About You",
-                            icon: "person.text.rectangle",
-                            iconColor: .mint
-                        ) {
-                            ZStack(alignment: .topLeading) {
-                                if settings.personalContext.isEmpty {
-                                    Text("Tell Lookout about yourself — who you are, what you're into, what kind of responses you prefer...")
-                                        .foregroundStyle(.white.opacity(0.3))
-                                        .font(.subheadline)
-                                        .padding(.top, 8).padding(.leading, 4)
-                                }
-                                TextEditor(text: $settings.personalContext)
-                                    .frame(minHeight: 120)
-                                    .scrollContentBackground(.hidden)
-                                    .foregroundStyle(.white)
-                                    .font(.subheadline)
-                            }
-                            settingsFooter("Included in every AI call so Lookout can personalize responses. Stored locally only.")
-                        }
-
-                        // Voice Output
-                        glassSection(
-                            header: "Voice Output",
-                            icon: "speaker.wave.3.fill",
-                            iconColor: .orange
-                        ) {
-                            glassToggle("Voice Output", icon: "speaker.wave.2", isOn: $settings.voiceOutputEnabled)
-
-                            if settings.voiceOutputEnabled {
-                                glassDivider()
-                                Picker("Voice Engine", selection: $settings.voiceEngine) {
-                                    ForEach(VoiceEngine.allCases, id: \.self) { engine in
-                                        Text(engine.rawValue).tag(engine)
-                                    }
-                                }
-                                .pickerStyle(.segmented)
-                                .onChange(of: settings.voiceEngine) { _, _ in syncSpeechSettings() }
-
-                                if settings.voiceEngine == .elevenLabs {
-                                    glassDivider()
-                                    apiKeyField(label: "ElevenLabs API Key", placeholder: "xi-...", text: $settings.elevenLabsAPIKey)
-                                        .onChange(of: settings.elevenLabsAPIKey) { _, _ in syncSpeechSettings() }
-                                    glassDivider()
-                                    Picker("Voice", selection: $settings.elevenLabsVoiceId) {
-                                        ForEach(ElevenLabsVoice.presets) { voice in
-                                            Text(voice.name).tag(voice.id)
-                                        }
-                                    }
-                                    .foregroundStyle(.white)
-                                    .onChange(of: settings.elevenLabsVoiceId) { _, newValue in
-                                        if let voice = ElevenLabsVoice.presets.first(where: { $0.id == newValue }) {
-                                            settings.elevenLabsVoiceName = voice.name
-                                        }
-                                        syncSpeechSettings()
-                                    }
-                                } else {
-                                    glassDivider()
-                                    Picker("Voice", selection: $speechService.selectedVoice) {
-                                        ForEach(VoiceStyle.allCases, id: \.self) { voice in
-                                            Text(voice.rawValue).tag(voice)
-                                        }
-                                    }
-                                    .foregroundStyle(.white)
-                                }
-
-                                glassDivider()
-                                Button("Test Voice") {
-                                    syncSpeechSettings()
-                                    speechService.speakSegments([
-                                        "This is Lookout.",
-                                        "That's a Red-tailed Hawk — pretty common in the Midwest but always impressive.",
-                                        "You can see more on iNaturalist."
-                                    ])
-                                }
-                                .foregroundStyle(.cyan)
-                            }
-
-                            settingsFooter(settings.voiceEngine == .elevenLabs
-                                ? "ElevenLabs provides natural voices. 10,000 chars/month free."
-                                : "Download Premium voices in Settings → Accessibility → Spoken Content for best quality."
-                            )
-                        }
-
-                        // Active Skills
-                        glassSection(
-                            header: "Active Skills",
-                            icon: "bolt.fill",
-                            iconColor: .yellow
-                        ) {
-                            VStack(spacing: 0) {
-                                glassSkillRow(name: "Flight Tracking", icon: "airplane", status: .available, note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Landmark ID", icon: "building.2",
-                                              status: settings.googlePlacesAPIKey.isEmpty ? .partial : .available,
-                                              note: settings.googlePlacesAPIKey.isEmpty ? "Wikipedia only" : "Google Places + Wikipedia",
-                                              color: SkillCategory.landmark.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Music ID", icon: "music.note", status: .available, note: "ShazamKit (built-in)", color: SkillCategory.music.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Plant & Animal ID", icon: "leaf", status: .available, note: "iNaturalist (free)", color: SkillCategory.plant.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Vehicle ID", icon: "car", status: .available, note: "NHTSA (free)", color: SkillCategory.vehicle.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Product / Barcode", icon: "barcode", status: .available, note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Translation", icon: "character.book.closed", status: .available, note: "AI-powered text translation", color: SkillCategory.translation.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Food & Nutrition", icon: "fork.knife", status: .available, note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Drink ID", icon: "wineglass", status: .available, note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Receipt Scanner", icon: "receipt", status: .available, note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Medication", icon: "pill", status: .available, note: "OpenFDA (free)", color: SkillCategory.medication.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Book & Movie", icon: "book", status: .available, note: "Open Library (free)", color: SkillCategory.book.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Business Card", icon: "person.text.rectangle", status: .available, note: "AI contact extraction", color: SkillCategory.businessCard.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "QR Code", icon: "qrcode", status: .available, note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor)
-                                glassDivider()
-                                glassSkillRow(name: "Face Recognition", icon: "person.crop.circle",
-                                              status: settings.faceRecognitionEnabled ? .available : .unavailable,
-                                              note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
-                                              color: .blue)
-                            }
-                        }
-
-                        // Known Faces
-                        if settings.faceRecognitionEnabled {
-                            glassSection(
-                                header: "Known Faces",
-                                icon: "person.crop.circle.fill",
-                                iconColor: .blue,
-                                count: faceMemory.knownFaces.count
-                            ) {
-                                if faceMemory.knownFaces.isEmpty {
-                                    Text("No saved faces yet")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.white.opacity(0.4))
-                                        .padding(.vertical, 4)
-                                } else {
-                                    ForEach(faceMemory.knownFaces) { face in
-                                        HStack(spacing: 12) {
-                                            ZStack {
-                                                Circle().fill(Color.blue.opacity(0.2)).frame(width: 40, height: 40)
-                                                Image(systemName: "person.crop.circle.fill")
-                                                    .font(.title3).foregroundStyle(.blue)
-                                            }
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(face.name).font(.subheadline.weight(.medium)).foregroundStyle(.white)
-                                                HStack(spacing: 6) {
-                                                    if !face.relationship.isEmpty {
-                                                        Text(face.relationship)
-                                                    }
-                                                    Text("·")
-                                                    Text("Seen \(face.timesSeen)×")
-                                                }
-                                                .font(.caption).foregroundStyle(.white.opacity(0.5))
-                                                if !face.notes.isEmpty {
-                                                    Text(face.notes)
-                                                        .font(.caption2)
-                                                        .foregroundStyle(.white.opacity(0.4))
-                                                        .lineLimit(2)
-                                                }
-                                            }
-                                            Spacer()
-                                            Text("\(face.sampleCount) samples")
-                                                .font(.caption2).foregroundStyle(.white.opacity(0.35))
-                                        }
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                                settingsFooter("🔒 Face data stored on-device via Apple Vision. Swipe to delete.")
-                            }
-                        }
-
-                        // Saved Places
-                        if settings.placeMemoryEnabled {
-                            glassSection(
-                                header: "Saved Places",
-                                icon: "mappin.circle.fill",
-                                iconColor: .red,
-                                count: placeMemory.savedPlaces.count
-                            ) {
-                                if placeMemory.savedPlaces.isEmpty {
-                                    Text("No saved places yet")
-                                        .font(.subheadline).foregroundStyle(.white.opacity(0.4))
-                                        .padding(.vertical, 4)
-                                } else {
-                                    ForEach(placeMemory.savedPlaces) { place in
-                                        HStack(spacing: 12) {
-                                            ZStack {
-                                                Circle().fill(Color.red.opacity(0.2)).frame(width: 36, height: 36)
-                                                Image(systemName: place.category.iconName)
-                                                    .font(.footnote).foregroundStyle(.red)
-                                            }
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(place.name).font(.subheadline.weight(.medium)).foregroundStyle(.white)
-                                                HStack(spacing: 6) {
-                                                    Text(place.category.rawValue)
-                                                    Text("·")
-                                                    Text("\(place.visitCount) visits")
-                                                }
-                                                .font(.caption).foregroundStyle(.white.opacity(0.5))
-                                            }
-                                            Spacer()
-                                        }
-                                        .padding(.vertical, 4)
-                                    }
-                                }
-                                settingsFooter("Places matched by GPS within 100m.")
-                            }
-                        }
-
-                        // Stats
-                        glassSection(
-                            header: "Your Stats",
-                            icon: "chart.bar.fill",
-                            iconColor: .green
-                        ) {
-                            statRow("Total Scans", value: "\(userContext.context.totalScans)")
-                            if let top = userContext.context.categoryCounts.max(by: { $0.value < $1.value }) {
-                                glassDivider()
-                                statRow("Most Scanned", value: "\(top.key.capitalized) (\(top.value))")
-                            }
-                            glassDivider()
-                            statRow("Known Faces", value: "\(faceMemory.knownFaces.count)")
-                            glassDivider()
-                            statRow("Saved Places", value: "\(placeMemory.savedPlaces.count)")
-                            glassDivider()
-                            statRow("Products Learned", value: "\(userContext.context.knownProducts.count)")
-                            glassDivider()
-                            statRow("Known Pets", value: "\(userContext.knownPets.count)")
-                        }
-
-                        // Developer
-                        glassSection(
-                            header: "Developer",
-                            icon: "ladybug.fill",
-                            iconColor: .orange
-                        ) {
-                            glassToggle("Scan Debug Trace", icon: "ladybug", isOn: $settings.developerTraceEnabled)
-                            #if DEBUG
-                            glassDivider()
-                            Button {
-                                showMockGlasses = true
-                            } label: {
-                                Label("Test Mock Glasses", systemImage: "eyeglasses")
-                                    .foregroundStyle(.cyan)
-                            }
-                            #endif
-                            settingsFooter("Shows debug panel after scans with model output, routing decisions, and context.")
-                        }
-
-                        // Privacy & Data
-                        glassSection(
-                            header: "Privacy & Data",
-                            icon: "lock.shield.fill",
-                            iconColor: .green
-                        ) {
-                            NavigationLink {
-                                PrivacyDetailView()
-                            } label: {
-                                HStack {
-                                    Image(systemName: "lock.shield").foregroundStyle(.green)
-                                    Text("View Full Privacy Details").foregroundStyle(.white)
-                                    Spacer()
-                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.white.opacity(0.35))
-                                }
-                            }
-                            glassDivider()
-                            privacySummaryRow(icon: "iphone", color: .green,
-                                title: "On-Device Storage",
-                                detail: "Faces, pets, places, products, preferences, API keys")
-                            glassDivider()
-                            privacySummaryRow(icon: "arrow.up.circle", color: .orange,
-                                title: "Sent When You Scan",
-                                detail: "Photos → AI provider, Barcodes → public databases")
-                            glassDivider()
-                            privacySummaryRow(icon: "xmark.shield.fill", color: .red,
-                                title: "No Servers, No Tracking, No Ads",
-                                detail: "Lookout has no backend. All data stays with you.")
-                        }
-
-                        // Data Management
-                        glassSection(
-                            header: "Data Management",
-                            icon: "trash.fill",
-                            iconColor: .red
-                        ) {
-                            Button(role: .destructive) {
-                                showResetConfirmation = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "trash").foregroundStyle(.red)
-                                    Text("Reset All Memory").foregroundStyle(.red)
-                                    Spacer()
-                                }
-                            }
-                            settingsFooter("Erases all faces, places, scan history, and learned preferences. Cannot be undone.")
-                        }
-
-                        // About
-                        glassSection(
-                            header: "About Lookout",
-                            icon: "eye.fill",
-                            iconColor: .cyan
-                        ) {
-                            statRow("Version", value: "2.0.0")
-                            glassDivider()
-                            statRow("Concept", value: "Contextual AI + Memory")
-                        }
+                        providerAndKeysSection
+                        glassesSettingsSection
+                        intelligenceAndSpeedSection
+                        personalAndVoiceSection
+                        skillsAndMemorySection
+                        systemAndAboutSection
                         Spacer(minLength: 40)
                     }
                     .padding(.horizontal, 16)
@@ -674,10 +126,10 @@ struct SettingsView: View {
         glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
     }
 
-    // MARK: - Intelligence & Personal
+    // MARK: - Intelligence & Speed
 
     @ViewBuilder
-    private var intelligenceAndPersonalSection: some View {
+    private var intelligenceAndSpeedSection: some View {
         glassSection(header: "Intelligence", icon: "sparkles", iconColor: .purple) {
             glassToggle("Smart Narration", icon: "waveform", isOn: $settings.smartNarrationEnabled)
             glassDivider()
@@ -687,6 +139,59 @@ struct SettingsView: View {
             settingsFooter("Smart Narration uses AI to generate natural speech. Face Recognition remembers named people. Place Memory saves familiar locations.")
         }
 
+        speedAndAmbientSection
+    }
+
+    @ViewBuilder
+    private var speedAndAmbientSection: some View {
+        glassSection(header: "Speed & Ambient", icon: "bolt.fill", iconColor: .yellow) {
+            glassToggle("Fast Model (Haiku)", icon: "hare", isOn: $settings.useFastModel)
+            settingsFooter("Uses Claude Haiku for faster image classification (~1-2s faster). Slightly less accurate for ambiguous images.")
+            glassDivider()
+            glassToggle("Continuous Scan", icon: "arrow.triangle.2.circlepath", isOn: $settings.continuousScanEnabled)
+            if settings.continuousScanEnabled {
+                HStack {
+                    Text("Interval")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Spacer()
+                    Text("\(Int(settings.continuousScanInterval))s")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.white)
+                }
+                Slider(value: $settings.continuousScanInterval, in: 5...30, step: 1)
+                    .tint(.yellow)
+            }
+            settingsFooter("Periodically scans the camera and narrates what's around you.")
+            glassDivider()
+            glassToggle("Proactive Place Narration", icon: "location.fill", isOn: $settings.proactiveNarrationEnabled)
+            settingsFooter("Speaks context when you arrive at a saved place.")
+            glassDivider()
+            glassToggle("Replay Buffer", icon: "backward.frame", isOn: $settings.replayBufferEnabled)
+            settingsFooter("Keeps last 30 seconds of frames so you can ask 'What did I just see?'")
+            glassDivider()
+            glassToggle("Camera Auto-Sleep", icon: "moon.fill", isOn: $settings.cameraAutoSleepEnabled)
+            if settings.cameraAutoSleepEnabled {
+                HStack {
+                    Text("Timeout")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Spacer()
+                    Text("\(Int(settings.cameraAutoSleepDelay))s")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.white)
+                }
+                Slider(value: $settings.cameraAutoSleepDelay, in: 30...300, step: 15)
+                    .tint(.indigo)
+            }
+            settingsFooter("Automatically turns off the camera after inactivity to save battery. Say \"camera on\" or tap the bolt icon to wake.")
+        }
+    }
+
+    // MARK: - Personal & Voice
+
+    @ViewBuilder
+    private var personalAndVoiceSection: some View {
         glassSection(header: "About You", icon: "person.text.rectangle", iconColor: .mint) {
             ZStack(alignment: .topLeading) {
                 if settings.personalContext.isEmpty {
@@ -703,9 +208,9 @@ struct SettingsView: View {
             }
             settingsFooter("Included in every AI call so Lookout can personalize responses. Stored locally only.")
         }
-    }
 
-    // MARK: - Voice Output
+        voiceOutputSection
+    }
 
     @ViewBuilder
     private var voiceOutputSection: some View {
@@ -772,6 +277,19 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var skillsAndMemorySection: some View {
+        activeSkillsSection
+
+        if settings.faceRecognitionEnabled {
+            knownFacesSection
+        }
+
+        if settings.placeMemoryEnabled {
+            savedPlacesSection
+        }
+    }
+
+    @ViewBuilder
+    private var activeSkillsSection: some View {
         glassSection(header: "Active Skills", icon: "bolt.fill", iconColor: .yellow) {
             VStack(spacing: 0) {
                 glassSkillRow(name: "Flight Tracking", icon: "airplane", status: .available, note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor)
@@ -789,19 +307,27 @@ struct SettingsView: View {
                 glassDivider()
                 glassSkillRow(name: "Product / Barcode", icon: "barcode", status: .available, note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor)
                 glassDivider()
+                glassSkillRow(name: "Translation", icon: "character.book.closed", status: .available, note: "AI-powered text translation", color: SkillCategory.translation.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Food & Nutrition", icon: "fork.knife", status: .available, note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Drink ID", icon: "wineglass", status: .available, note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Receipt Scanner", icon: "receipt", status: .available, note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Medication", icon: "pill", status: .available, note: "OpenFDA (free)", color: SkillCategory.medication.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Book & Movie", icon: "book", status: .available, note: "Open Library (free)", color: SkillCategory.book.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Business Card", icon: "person.text.rectangle", status: .available, note: "AI contact extraction", color: SkillCategory.businessCard.skillColor)
+                glassDivider()
+                glassSkillRow(name: "QR Code", icon: "qrcode", status: .available, note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor)
+                glassDivider()
                 glassSkillRow(name: "Face Recognition", icon: "person.crop.circle",
                               status: settings.faceRecognitionEnabled ? .available : .unavailable,
                               note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
                               color: .blue)
             }
-        }
-
-        if settings.faceRecognitionEnabled {
-            knownFacesSection
-        }
-
-        if settings.placeMemoryEnabled {
-            savedPlacesSection
         }
     }
 
@@ -827,10 +353,16 @@ struct SettingsView: View {
                                 if !face.relationship.isEmpty {
                                     Text(face.relationship)
                                 }
-                                Text("·")
-                                Text("Seen \(face.timesSeen)×")
+                                Text("\u{00B7}")
+                                Text("Seen \(face.timesSeen)\u{00D7}")
                             }
                             .font(.caption).foregroundStyle(.white.opacity(0.5))
+                            if !face.notes.isEmpty {
+                                Text(face.notes)
+                                    .font(.caption2)
+                                    .foregroundStyle(.white.opacity(0.4))
+                                    .lineLimit(2)
+                            }
                         }
                         Spacer()
                         Text("\(face.sampleCount) samples")
@@ -839,7 +371,7 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
             }
-            settingsFooter("🔒 Face data stored on-device via Apple Vision. Swipe to delete.")
+            settingsFooter("Face data stored on-device via Apple Vision. Swipe to delete.")
         }
     }
 
@@ -862,7 +394,7 @@ struct SettingsView: View {
                             Text(place.name).font(.subheadline.weight(.medium)).foregroundStyle(.white)
                             HStack(spacing: 6) {
                                 Text(place.category.rawValue)
-                                Text("·")
+                                Text("\u{00B7}")
                                 Text("\(place.visitCount) visits")
                             }
                             .font(.caption).foregroundStyle(.white.opacity(0.5))
@@ -896,6 +428,11 @@ struct SettingsView: View {
             statRow("Known Pets", value: "\(userContext.knownPets.count)")
         }
 
+        developerAndPrivacySection
+    }
+
+    @ViewBuilder
+    private var developerAndPrivacySection: some View {
         glassSection(header: "Developer", icon: "ladybug.fill", iconColor: .orange) {
             glassToggle("Scan Debug Trace", icon: "ladybug", isOn: $settings.developerTraceEnabled)
             #if DEBUG
@@ -1097,7 +634,6 @@ struct SettingsView: View {
         speechService.elevenLabsVoiceId = settings.elevenLabsVoiceId
         speechService.selectedVoice = settings.selectedVoiceStyle
     }
-
 }
 
 // MARK: - Skill Status Row (preserved for compatibility)
