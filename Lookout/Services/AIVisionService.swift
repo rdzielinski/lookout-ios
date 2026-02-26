@@ -20,35 +20,44 @@ class AIVisionService {
     var debugSystemPromptText: String { systemPrompt }
     
     // MARK: - Main Analysis Method
-    func analyzeImage(_ image: UIImage) async throws -> AIVisionResponse {
+    func analyzeImage(_ image: UIImage, userQuestion: String? = nil) async throws -> AIVisionResponse {
         guard let imageData = image.jpegData(compressionQuality: 0.7) else {
             throw LookoutError.imageProcessingFailed
         }
-        
+
         let base64Image = imageData.base64EncodedString()
-        
+        let userText = buildUserMessageText(userQuestion: userQuestion)
+
         switch settings.selectedProvider {
         case .claude:
-            return try await analyzeWithClaude(base64Image: base64Image)
+            return try await analyzeWithClaude(base64Image: base64Image, userText: userText)
         case .openai:
-            return try await analyzeWithOpenAI(base64Image: base64Image)
+            return try await analyzeWithOpenAI(base64Image: base64Image, userText: userText)
         }
     }
-    
+
     // MARK: - Streaming Analysis (returns partial text via callback)
-    func analyzeImageStreaming(_ image: UIImage, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
+    func analyzeImageStreaming(_ image: UIImage, userQuestion: String? = nil, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
         guard let imageData = image.jpegData(compressionQuality: 0.7) else {
             throw LookoutError.imageProcessingFailed
         }
-        
+
         let base64Image = imageData.base64EncodedString()
-        
+        let userText = buildUserMessageText(userQuestion: userQuestion)
+
         switch settings.selectedProvider {
         case .claude:
-            return try await analyzeWithClaudeStreaming(base64Image: base64Image, onPartial: onPartial)
+            return try await analyzeWithClaudeStreaming(base64Image: base64Image, userText: userText, onPartial: onPartial)
         case .openai:
-            return try await analyzeWithOpenAIStreaming(base64Image: base64Image, onPartial: onPartial)
+            return try await analyzeWithOpenAIStreaming(base64Image: base64Image, userText: userText, onPartial: onPartial)
         }
+    }
+
+    private func buildUserMessageText(userQuestion: String?) -> String {
+        if let question = userQuestion, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "The user asks: \"\(question)\". Analyze this image with their question in mind and categorize for routing."
+        }
+        return "What is this? Analyze and categorize for routing."
     }
     
     // MARK: - System Prompt
@@ -97,7 +106,7 @@ class AIVisionService {
     }
     
     // MARK: - Claude API (Non-streaming)
-    private func analyzeWithClaude(base64Image: String) async throws -> AIVisionResponse {
+    private func analyzeWithClaude(base64Image: String, userText: String) async throws -> AIVisionResponse {
         let url = URL(string: "https://api.anthropic.com/v1/messages")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -124,7 +133,7 @@ class AIVisionService {
                         ],
                         [
                             "type": "text",
-                            "text": "What is this? Analyze and categorize for routing."
+                            "text": userText
                         ]
                     ]
                 ]
@@ -158,7 +167,7 @@ class AIVisionService {
     }
     
     // MARK: - Claude Streaming
-    private func analyzeWithClaudeStreaming(base64Image: String, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
+    private func analyzeWithClaudeStreaming(base64Image: String, userText: String, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
         let url = URL(string: "https://api.anthropic.com/v1/messages")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -186,7 +195,7 @@ class AIVisionService {
                         ],
                         [
                             "type": "text",
-                            "text": "What is this? Analyze and categorize for routing."
+                            "text": userText
                         ]
                     ]
                 ]
@@ -227,7 +236,7 @@ class AIVisionService {
     }
     
     // MARK: - OpenAI API (Non-streaming)
-    private func analyzeWithOpenAI(base64Image: String) async throws -> AIVisionResponse {
+    private func analyzeWithOpenAI(base64Image: String, userText: String) async throws -> AIVisionResponse {
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -249,7 +258,7 @@ class AIVisionService {
                         ],
                         [
                             "type": "text",
-                            "text": "What is this? Analyze and categorize for routing."
+                            "text": userText
                         ]
                     ]
                 ]
@@ -282,7 +291,7 @@ class AIVisionService {
     }
     
     // MARK: - OpenAI Streaming
-    private func analyzeWithOpenAIStreaming(base64Image: String, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
+    private func analyzeWithOpenAIStreaming(base64Image: String, userText: String, onPartial: @escaping (String) -> Void) async throws -> AIVisionResponse {
         let url = URL(string: "https://api.openai.com/v1/chat/completions")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -305,7 +314,7 @@ class AIVisionService {
                         ],
                         [
                             "type": "text",
-                            "text": "What is this? Analyze and categorize for routing."
+                            "text": userText
                         ]
                     ]
                 ]

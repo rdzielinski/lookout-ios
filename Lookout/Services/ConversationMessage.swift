@@ -33,7 +33,7 @@ class ConversationService {
     
     // MARK: - Start Conversation
     
-    func startConversation(imageData: Data?, aiResponse: AIVisionResponse?, skillResult: SkillResult?, faceMatches: [FaceMatch] = [], nearbyPlace: SavedPlace? = nil) {
+    func startConversation(imageData: Data?, aiResponse: AIVisionResponse?, skillResult: SkillResult?, faceMatches: [FaceMatch] = [], nearbyPlace: SavedPlace? = nil, userQuestion: String? = nil) {
         messages = []
         apiMessages = []
         contextImageBase64 = nil
@@ -99,9 +99,15 @@ class ConversationService {
             }
         }
         
+        var initialText = "I just took a photo and here's what was identified:\n\(context)\n\nYou are now in conversation mode. The user may ask follow-up questions about what they see. Answer conversationally and concisely — you're being spoken aloud, so keep responses to 1-3 sentences. Be helpful, direct, and natural. Use any context about the user to personalize your responses."
+
+        if let question = userQuestion, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            initialText += "\n\nThe user specifically asked: \"\(question)\". Please answer their question based on what was identified."
+        }
+
         userContent.append([
             "type": "text",
-            "text": "I just took a photo and here's what was identified:\n\(context)\n\nYou are now in conversation mode. The user may ask follow-up questions about what they see. Answer conversationally and concisely — you're being spoken aloud, so keep responses to 1-3 sentences. Be helpful, direct, and natural. Use any context about the user to personalize your responses."
+            "text": initialText
         ])
         
         apiMessages.append([
@@ -109,15 +115,20 @@ class ConversationService {
             "content": userContent
         ])
         
+        // Show user's pre-scan question in the conversation
+        if let question = userQuestion, !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            messages.append(ConversationMessage(role: .user, text: question))
+        }
+
         let initialSummary = skillResult.map { result in
             "That's \(result.title). \(result.subtitle). \(result.details.prefix(2).map { "\($0.label): \($0.value)" }.joined(separator: ". "))."
         } ?? "I can see something in the image. What would you like to know?"
-        
+
         apiMessages.append([
             "role": "assistant",
             "content": initialSummary
         ])
-        
+
         messages.append(ConversationMessage(role: .assistant, text: initialSummary))
     }
     
