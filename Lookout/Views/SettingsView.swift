@@ -21,8 +21,8 @@ struct SettingsView: View {
                     VStack(spacing: 20) {
                         providerAndKeysSection
                         glassesSettingsSection
-                        intelligenceAndPersonalSection
-                        voiceOutputSection
+                        intelligenceAndSpeedSection
+                        personalAndVoiceSection
                         skillsAndMemorySection
                         systemAndAboutSection
                         Spacer(minLength: 40)
@@ -126,10 +126,10 @@ struct SettingsView: View {
         glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
     }
 
-    // MARK: - Intelligence & Personal
+    // MARK: - Intelligence & Speed
 
     @ViewBuilder
-    private var intelligenceAndPersonalSection: some View {
+    private var intelligenceAndSpeedSection: some View {
         glassSection(header: "Intelligence", icon: "sparkles", iconColor: .purple) {
             glassToggle("Smart Narration", icon: "waveform", isOn: $settings.smartNarrationEnabled)
             glassDivider()
@@ -139,6 +139,59 @@ struct SettingsView: View {
             settingsFooter("Smart Narration uses AI to generate natural speech. Face Recognition remembers named people. Place Memory saves familiar locations.")
         }
 
+        speedAndAmbientSection
+    }
+
+    @ViewBuilder
+    private var speedAndAmbientSection: some View {
+        glassSection(header: "Speed & Ambient", icon: "bolt.fill", iconColor: .yellow) {
+            glassToggle("Fast Model (Haiku)", icon: "hare", isOn: $settings.useFastModel)
+            settingsFooter("Uses Claude Haiku for faster image classification (~1-2s faster). Slightly less accurate for ambiguous images.")
+            glassDivider()
+            glassToggle("Continuous Scan", icon: "arrow.triangle.2.circlepath", isOn: $settings.continuousScanEnabled)
+            if settings.continuousScanEnabled {
+                HStack {
+                    Text("Interval")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Spacer()
+                    Text("\(Int(settings.continuousScanInterval))s")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.white)
+                }
+                Slider(value: $settings.continuousScanInterval, in: 5...30, step: 1)
+                    .tint(.yellow)
+            }
+            settingsFooter("Periodically scans the camera and narrates what's around you.")
+            glassDivider()
+            glassToggle("Proactive Place Narration", icon: "location.fill", isOn: $settings.proactiveNarrationEnabled)
+            settingsFooter("Speaks context when you arrive at a saved place.")
+            glassDivider()
+            glassToggle("Replay Buffer", icon: "backward.frame", isOn: $settings.replayBufferEnabled)
+            settingsFooter("Keeps last 30 seconds of frames so you can ask 'What did I just see?'")
+            glassDivider()
+            glassToggle("Camera Auto-Sleep", icon: "moon.fill", isOn: $settings.cameraAutoSleepEnabled)
+            if settings.cameraAutoSleepEnabled {
+                HStack {
+                    Text("Timeout")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Spacer()
+                    Text("\(Int(settings.cameraAutoSleepDelay))s")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.white)
+                }
+                Slider(value: $settings.cameraAutoSleepDelay, in: 30...300, step: 15)
+                    .tint(.indigo)
+            }
+            settingsFooter("Automatically turns off the camera after inactivity to save battery. Say \"camera on\" or tap the bolt icon to wake.")
+        }
+    }
+
+    // MARK: - Personal & Voice
+
+    @ViewBuilder
+    private var personalAndVoiceSection: some View {
         glassSection(header: "About You", icon: "person.text.rectangle", iconColor: .mint) {
             ZStack(alignment: .topLeading) {
                 if settings.personalContext.isEmpty {
@@ -155,9 +208,9 @@ struct SettingsView: View {
             }
             settingsFooter("Included in every AI call so Lookout can personalize responses. Stored locally only.")
         }
-    }
 
-    // MARK: - Voice Output
+        voiceOutputSection
+    }
 
     @ViewBuilder
     private var voiceOutputSection: some View {
@@ -224,6 +277,19 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var skillsAndMemorySection: some View {
+        activeSkillsSection
+
+        if settings.faceRecognitionEnabled {
+            knownFacesSection
+        }
+
+        if settings.placeMemoryEnabled {
+            savedPlacesSection
+        }
+    }
+
+    @ViewBuilder
+    private var activeSkillsSection: some View {
         glassSection(header: "Active Skills", icon: "bolt.fill", iconColor: .yellow) {
             VStack(spacing: 0) {
                 glassSkillRow(name: "Flight Tracking", icon: "airplane", status: .available, note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor)
@@ -241,19 +307,27 @@ struct SettingsView: View {
                 glassDivider()
                 glassSkillRow(name: "Product / Barcode", icon: "barcode", status: .available, note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor)
                 glassDivider()
+                glassSkillRow(name: "Translation", icon: "character.book.closed", status: .available, note: "AI-powered text translation", color: SkillCategory.translation.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Food & Nutrition", icon: "fork.knife", status: .available, note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Drink ID", icon: "wineglass", status: .available, note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Receipt Scanner", icon: "receipt", status: .available, note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Medication", icon: "pill", status: .available, note: "OpenFDA (free)", color: SkillCategory.medication.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Book & Movie", icon: "book", status: .available, note: "Open Library (free)", color: SkillCategory.book.skillColor)
+                glassDivider()
+                glassSkillRow(name: "Business Card", icon: "person.text.rectangle", status: .available, note: "AI contact extraction", color: SkillCategory.businessCard.skillColor)
+                glassDivider()
+                glassSkillRow(name: "QR Code", icon: "qrcode", status: .available, note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor)
+                glassDivider()
                 glassSkillRow(name: "Face Recognition", icon: "person.crop.circle",
                               status: settings.faceRecognitionEnabled ? .available : .unavailable,
                               note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
                               color: .blue)
             }
-        }
-
-        if settings.faceRecognitionEnabled {
-            knownFacesSection
-        }
-
-        if settings.placeMemoryEnabled {
-            savedPlacesSection
         }
     }
 
@@ -279,10 +353,16 @@ struct SettingsView: View {
                                 if !face.relationship.isEmpty {
                                     Text(face.relationship)
                                 }
-                                Text("·")
-                                Text("Seen \(face.timesSeen)×")
+                                Text("\u{00B7}")
+                                Text("Seen \(face.timesSeen)\u{00D7}")
                             }
                             .font(.caption).foregroundStyle(.white.opacity(0.5))
+                            if !face.notes.isEmpty {
+                                Text(face.notes)
+                                    .font(.caption2)
+                                    .foregroundStyle(.white.opacity(0.4))
+                                    .lineLimit(2)
+                            }
                         }
                         Spacer()
                         Text("\(face.sampleCount) samples")
@@ -291,7 +371,7 @@ struct SettingsView: View {
                     .padding(.vertical, 4)
                 }
             }
-            settingsFooter("🔒 Face data stored on-device via Apple Vision. Swipe to delete.")
+            settingsFooter("Face data stored on-device via Apple Vision. Swipe to delete.")
         }
     }
 
@@ -314,7 +394,7 @@ struct SettingsView: View {
                             Text(place.name).font(.subheadline.weight(.medium)).foregroundStyle(.white)
                             HStack(spacing: 6) {
                                 Text(place.category.rawValue)
-                                Text("·")
+                                Text("\u{00B7}")
                                 Text("\(place.visitCount) visits")
                             }
                             .font(.caption).foregroundStyle(.white.opacity(0.5))
@@ -348,6 +428,11 @@ struct SettingsView: View {
             statRow("Known Pets", value: "\(userContext.knownPets.count)")
         }
 
+        developerAndPrivacySection
+    }
+
+    @ViewBuilder
+    private var developerAndPrivacySection: some View {
         glassSection(header: "Developer", icon: "ladybug.fill", iconColor: .orange) {
             glassToggle("Scan Debug Trace", icon: "ladybug", isOn: $settings.developerTraceEnabled)
             #if DEBUG
@@ -549,7 +634,6 @@ struct SettingsView: View {
         speechService.elevenLabsVoiceId = settings.elevenLabsVoiceId
         speechService.selectedVoice = settings.selectedVoiceStyle
     }
-
 }
 
 // MARK: - Skill Status Row (preserved for compatibility)

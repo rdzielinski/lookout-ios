@@ -37,6 +37,26 @@ struct ContentView: View {
 
             atmosphericOverlay
 
+            // Camera sleeping overlay
+            if viewModel.isCameraSleeping {
+                VStack(spacing: 16) {
+                    Image(systemName: "bolt.slash.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.white.opacity(0.5))
+                    Text("Camera Off")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text("Tap the bolt icon or say \"camera on\" to resume")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.4))
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.black.opacity(0.7))
+                .transition(.opacity)
+                .onTapGesture { viewModel.wakeCamera() }
+            }
+
             // MARK: - Overlay UI
             VStack(spacing: 0) {
                 topBar
@@ -89,6 +109,23 @@ struct ContentView: View {
                     .padding(.top, 6)
                 }
 
+                // Continuous scan indicator
+                if settings.continuousScanEnabled {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.caption)
+                            .symbolEffect(.rotate, isActive: true)
+                        Text("Continuous Scan")
+                            .font(.caption.weight(.medium))
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(.cyan.opacity(0.75))
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 4)
+                }
+
                 Spacer()
                 if viewModel.isAudioOnlyMode {
                     audioOnlyOverlay
@@ -103,7 +140,8 @@ struct ContentView: View {
                 if !viewModel.isAudioOnlyMode { bottomControls }
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.isOfflineMode)
-        .animation(.easeInOut(duration: 0.3), value: viewModel.glassesService.connectionState == .error)
+            .animation(.easeInOut(duration: 0.3), value: settings.continuousScanEnabled)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.glassesService.connectionState == .error)
 
             // MARK: - Viewfinder Reticle
             if !viewModel.isAudioOnlyMode && !viewModel.showResult {
@@ -344,7 +382,21 @@ struct ContentView: View {
 
             Spacer()
 
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
+                // Camera power toggle
+                circularControl(
+                    icon: viewModel.isCameraSleeping ? "bolt.slash.fill" : "bolt.fill",
+                    tint: viewModel.isCameraSleeping ? .red : nil,
+                    action: {
+                        withAnimation(.spring(response: 0.3)) { viewModel.toggleCameraPower() }
+                    }
+                )
+
+                // Parking spot
+                circularControl(icon: "car.fill", action: {
+                    viewModel.saveParkingSpot()
+                })
+
                 circularControl(icon: "mappin.circle.fill", action: {
                     placeNameText = ""; selectedPlaceCategory = .other; showSavePlace = true
                 })
@@ -652,10 +704,11 @@ struct ContentView: View {
 
     // MARK: - Circular Control
     @ViewBuilder
-    private func circularControl(icon: String, action: @escaping () -> Void) -> some View {
+    private func circularControl(icon: String, tint: Color? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.title3.weight(.semibold))
+                .foregroundStyle(tint ?? .white)
                 .padding(10)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }

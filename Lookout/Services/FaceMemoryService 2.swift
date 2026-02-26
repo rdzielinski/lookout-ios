@@ -124,6 +124,31 @@ class FaceMemoryService: ObservableObject {
         knownFaces = []
         saveFacesToDisk()
     }
+
+    // MARK: - People Notes
+
+    func notes(for name: String) -> String? {
+        let n = knownFaces.first(where: { $0.name.lowercased() == name.lowercased() })?.notes
+        return (n?.isEmpty ?? true) ? nil : n
+    }
+
+    func updateNotes(for name: String, notes: String) {
+        if let idx = knownFaces.firstIndex(where: { $0.name.lowercased() == name.lowercased() }) {
+            knownFaces[idx].notes = notes
+            saveFacesToDisk()
+        }
+    }
+
+    func appendNote(for name: String, note: String) {
+        if let idx = knownFaces.firstIndex(where: { $0.name.lowercased() == name.lowercased() }) {
+            if knownFaces[idx].notes.isEmpty {
+                knownFaces[idx].notes = note
+            } else {
+                knownFaces[idx].notes += "\n\(note)"
+            }
+            saveFacesToDisk()
+        }
+    }
     
     // MARK: - Vision Face Detection (Landmarks)
     
@@ -446,21 +471,40 @@ struct SavedFace: Codable, Identifiable {
     let id: UUID
     var name: String
     var relationship: String
+    var notes: String
     var featureSets: [FaceFeatures]
     var firstSeen: Date
     var lastSeen: Date
     var timesSeen: Int
-    
+
     var sampleCount: Int { featureSets.count }
-    
-    init(name: String, relationship: String = "", featureSets: [FaceFeatures], firstSeen: Date, lastSeen: Date, timesSeen: Int) {
+
+    init(name: String, relationship: String = "", notes: String = "", featureSets: [FaceFeatures], firstSeen: Date, lastSeen: Date, timesSeen: Int) {
         self.id = UUID()
         self.name = name
         self.relationship = relationship
+        self.notes = notes
         self.featureSets = featureSets
         self.firstSeen = firstSeen
         self.lastSeen = lastSeen
         self.timesSeen = timesSeen
+    }
+
+    // Support decoding old data that lacks the notes field
+    enum CodingKeys: String, CodingKey {
+        case id, name, relationship, notes, featureSets, firstSeen, lastSeen, timesSeen
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        relationship = try c.decode(String.self, forKey: .relationship)
+        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        featureSets = try c.decode([FaceFeatures].self, forKey: .featureSets)
+        firstSeen = try c.decode(Date.self, forKey: .firstSeen)
+        lastSeen = try c.decode(Date.self, forKey: .lastSeen)
+        timesSeen = try c.decode(Int.self, forKey: .timesSeen)
     }
 }
 

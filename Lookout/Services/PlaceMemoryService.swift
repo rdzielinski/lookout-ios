@@ -94,6 +94,50 @@ class PlaceMemoryService: ObservableObject {
         savedPlaces = []
         savePlacesToDisk()
     }
+
+    // MARK: - Parking Spot
+
+    /// Save current location as a parking spot. Auto-expires after 24 hours.
+    func saveParkingSpot(location: CLLocation, notes: String = "") {
+        // Remove any existing parking spot
+        savedPlaces.removeAll { $0.category == .parking }
+
+        let spot = SavedPlace(
+            name: "My Parked Car",
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            radius: 50,
+            category: .parking,
+            notes: notes.isEmpty ? "Saved \(formattedNow)" : notes
+        )
+        savedPlaces.append(spot)
+        savePlacesToDisk()
+    }
+
+    /// Get the current parking spot if it exists and hasn't expired (24h).
+    func currentParkingSpot() -> SavedPlace? {
+        guard let spot = savedPlaces.first(where: { $0.category == .parking }) else { return nil }
+        // Auto-expire after 24 hours
+        if Date().timeIntervalSince(spot.createdAt) > 86400 {
+            savedPlaces.removeAll { $0.category == .parking }
+            savePlacesToDisk()
+            return nil
+        }
+        return spot
+    }
+
+    /// Clear parking spot
+    func clearParkingSpot() {
+        savedPlaces.removeAll { $0.category == .parking }
+        savePlacesToDisk()
+    }
+
+    private var formattedNow: String {
+        let f = DateFormatter()
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f.string(from: Date())
+    }
     
     // MARK: - Persistence
     
@@ -159,8 +203,9 @@ enum PlaceCategory: String, Codable, CaseIterable {
     case gym = "Gym"
     case friend = "Friend's Place"
     case family = "Family"
+    case parking = "Parking"
     case other = "Other"
-    
+
     var iconName: String {
         switch self {
         case .home: return "house.fill"
@@ -172,6 +217,7 @@ enum PlaceCategory: String, Codable, CaseIterable {
         case .gym: return "figure.run"
         case .friend: return "person.fill"
         case .family: return "person.2.fill"
+        case .parking: return "car.fill"
         case .other: return "mappin"
         }
     }

@@ -14,13 +14,21 @@ extension SkillCategory {
     /// SwiftUI's built-in `Color.accentColor` / `View.accentColor`.
     var skillColor: Color {
         switch self {
-        case .flight:   return LookoutColor.flight
-        case .landmark: return LookoutColor.landmark
-        case .music:    return LookoutColor.music
-        case .plant:    return LookoutColor.nature
-        case .vehicle:  return LookoutColor.vehicle
-        case .product:  return LookoutColor.product
-        case .unknown:  return LookoutColor.unknown
+        case .flight:       return LookoutColor.flight
+        case .landmark:     return LookoutColor.landmark
+        case .music:        return LookoutColor.music
+        case .plant:        return LookoutColor.nature
+        case .vehicle:      return LookoutColor.vehicle
+        case .product:      return LookoutColor.product
+        case .translation:  return LookoutColor.translation
+        case .food:         return LookoutColor.food
+        case .drink:        return LookoutColor.drink
+        case .receipt:      return LookoutColor.receipt
+        case .medication:   return LookoutColor.medication
+        case .book:         return LookoutColor.book
+        case .businessCard: return LookoutColor.businessCard
+        case .qrCode:       return LookoutColor.qrCode
+        case .unknown:      return LookoutColor.unknown
         }
     }
 }
@@ -58,6 +66,14 @@ enum LookoutColor {
     static let nature   = Color(red: 0.20, green: 0.78, blue: 0.35)  // #34C759
     static let vehicle  = Color(red: 1.00, green: 0.27, blue: 0.23)  // #FF453A
     static let product  = Color(red: 0.35, green: 0.78, blue: 0.98)  // #5AC8FA
+    static let translation  = Color(red: 0.00, green: 0.75, blue: 0.78)  // Teal
+    static let food         = Color(red: 1.00, green: 0.58, blue: 0.00)  // Warm orange
+    static let drink        = Color(red: 0.69, green: 0.13, blue: 0.47)  // Burgundy
+    static let receipt      = Color(red: 0.40, green: 0.85, blue: 0.40)  // Money green
+    static let medication   = Color(red: 1.00, green: 0.40, blue: 0.40)  // Soft red
+    static let book         = Color(red: 0.55, green: 0.45, blue: 0.90)  // Indigo
+    static let businessCard = Color(red: 0.30, green: 0.70, blue: 0.90)  // Sky blue
+    static let qrCode       = Color(red: 0.85, green: 0.85, blue: 0.20)  // Yellow-green
     static let unknown  = Color(red: 0.56, green: 0.56, blue: 0.58)  // #8E8E93
 }
 
