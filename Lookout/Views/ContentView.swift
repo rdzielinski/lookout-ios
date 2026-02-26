@@ -41,6 +41,41 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 topBar
 
+                // Glasses connection error banner
+                if settings.glassesMode && viewModel.glassesService.connectionState == .error,
+                   let errorMsg = viewModel.glassesService.lastError {
+                    HStack(spacing: 8) {
+                        Image(systemName: "eyeglasses").font(.caption)
+                        Text(errorMsg).font(.caption2).lineLimit(2)
+                        Spacer()
+                        Button {
+                            GlassesService.openBluetoothSettings()
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 8).padding(.vertical, 4)
+                                .background(.white.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                        Button {
+                            viewModel.glassesService.retryConnection()
+                        } label: {
+                            Text("Retry")
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10).padding(.vertical, 4)
+                                .background(.white.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(.red.opacity(0.85))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 6)
+                }
+
                 if viewModel.isOfflineMode {
                     HStack(spacing: 6) {
                         Image(systemName: "wifi.slash").font(.caption)
@@ -55,25 +90,30 @@ struct ContentView: View {
                 }
 
                 Spacer()
-                if viewModel.showResult { resultAndConversationArea }
+                if viewModel.isAudioOnlyMode {
+                    audioOnlyOverlay
+                } else if viewModel.showResult {
+                    resultAndConversationArea
+                }
                 Spacer()
-                bottomControls
+                if !viewModel.isAudioOnlyMode { bottomControls }
             }
             .animation(.easeInOut(duration: 0.3), value: viewModel.isOfflineMode)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.glassesService.connectionState == .error)
 
             // MARK: - Viewfinder Reticle
-            if !viewModel.showResult {
+            if !viewModel.isAudioOnlyMode && !viewModel.showResult {
                 ScanReticleView(isScanning: viewModel.isCapturing)
             }
 
             // Voice recording overlay
-            if viewModel.isAskingFollowUp { voiceRecordingOverlay }
+            if !viewModel.isAudioOnlyMode && viewModel.isAskingFollowUp { voiceRecordingOverlay }
 
             // Face naming overlay
-            if viewModel.showFaceNaming { faceNamingOverlay }
+            if !viewModel.isAudioOnlyMode && viewModel.showFaceNaming { faceNamingOverlay }
 
             // Face detection badges
-            if viewModel.showResult && !viewModel.currentFaceMatches.isEmpty {
+            if !viewModel.isAudioOnlyMode && viewModel.showResult && !viewModel.currentFaceMatches.isEmpty {
                 VStack {
                     HStack {
                         Spacer()
@@ -100,7 +140,7 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showSettings) { SettingsView(glassesService: viewModel.glassesService) }
         .sheet(isPresented: $showHistory) { ScanHistoryView(viewModel: viewModel) }
         .sheet(isPresented: $showSavePlace) { savePlaceSheet }
         .sheet(isPresented: $showDebugTrace) { ScanDebugView(trace: viewModel.latestDebugTrace) }
@@ -123,6 +163,76 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
             orbPhase = 1
         }
+    }
+
+    // MARK: - Audio-Only Glasses Overlay
+    private var audioOnlyOverlay: some View {
+        VStack(spacing: 16) {
+            switch viewModel.glassesFlowState {
+            case .scanning:
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(1.5)
+                Text("Analyzing...")
+                    .font(.headline)
+                    .foregroundStyle(.cyan)
+            case .speakingResult, .speakingFollowUp:
+                Image(systemName: "speaker.wave.3.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .symbolEffect(.variableColor.iterative)
+                Text("Speaking...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            case .listeningForFollowUp:
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(.red)
+                    .symbolEffect(.pulse)
+                Text("Listening...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text("Ask a follow-up or wait to return")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+            case .processingFollowUp:
+                ProgressView()
+                    .tint(.white)
+                Text("Thinking...")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            case .cooldown:
+                Text("Returning to standby...")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+            case .idle:
+                Image(systemName: "eyeglasses")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.white.opacity(0.6))
+                Text("Glasses Active")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                if settings.glassesCameraButtonEnabled && settings.glassesAutoListen {
+                    Text("Press camera button or say \"\(settings.glassesTriggerPhrase)\"")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                } else if settings.glassesCameraButtonEnabled {
+                    Text("Press camera button to scan")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                } else {
+                    Text("Say \"\(settings.glassesTriggerPhrase)\" to scan")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                if viewModel.isCapturing {
+                    ProgressView()
+                        .tint(.white)
+                        .padding(.top, 8)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: viewModel.glassesFlowState.rawValue)
     }
 
     // MARK: - Atmospheric Overlay (category-reactive orbs)
@@ -189,8 +299,33 @@ struct ContentView: View {
                     if settings.glassesMode {
                         HStack(spacing: 4) {
                             Image(systemName: "eyeglasses").font(.caption2).foregroundStyle(glassesStatusColor)
-                            Text(viewModel.glassesService.connectionState.rawValue)
-                                .font(.caption2).foregroundStyle(glassesStatusColor)
+
+                            if viewModel.glassesService.connectionState == .error {
+                                // Show error + tappable retry
+                                Button {
+                                    viewModel.glassesService.retryConnection()
+                                } label: {
+                                    HStack(spacing: 3) {
+                                        Text("Failed")
+                                            .font(.caption2).foregroundStyle(.red)
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.red)
+                                    }
+                                }
+                            } else if let attemptInfo = viewModel.glassesService.connectionAttemptInfo,
+                                      viewModel.glassesService.connectionState == .connecting {
+                                // Show "Connecting... Attempt 2 of 4"
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(viewModel.glassesService.connectionState.rawValue)
+                                        .font(.caption2).foregroundStyle(glassesStatusColor)
+                                    Text(attemptInfo)
+                                        .font(.system(size: 8)).foregroundStyle(.orange.opacity(0.7))
+                                }
+                            } else {
+                                Text(viewModel.glassesService.connectionState.rawValue)
+                                    .font(.caption2).foregroundStyle(glassesStatusColor)
+                            }
                         }
                     } else {
                         Text(settings.selectedProvider.rawValue)

@@ -10,7 +10,10 @@ import CoreImage
 class FaceMemoryService: ObservableObject {
     
     @Published var knownFaces: [SavedFace] = []
-    
+
+    /// Minimum face bounding box area to consider. Lower for wide-angle/glasses photos.
+    var minimumFaceArea: CGFloat = 0.012
+
     private let storageURL: URL
     private let matchThreshold: Float = 0.80 // Higher = stricter (0-1 scale)
     private let hashSize = 16 // 16x16 perceptual hash
@@ -36,7 +39,7 @@ class FaceMemoryService: ObservableObject {
         for face in faceObservations {
             // Ignore very small detections to reduce false matches.
             let area = face.boundingBox.width * face.boundingBox.height
-            if area < 0.012 { continue }
+            if area < minimumFaceArea { continue }
             
             let features = extractFeatures(face: face, cgImage: cgImage, imageSize: imageSize)
             
@@ -103,6 +106,15 @@ class FaceMemoryService: ObservableObject {
         }
     }
     
+    func relationship(for name: String) -> String? {
+        let rel = knownFaces.first(where: { $0.name.lowercased() == name.lowercased() })?.relationship
+        return (rel?.isEmpty ?? true) ? nil : rel
+    }
+
+    func timesSeen(for name: String) -> Int {
+        knownFaces.first(where: { $0.name.lowercased() == name.lowercased() })?.timesSeen ?? 0
+    }
+
     func removeFace(name: String) {
         knownFaces.removeAll { $0.name.lowercased() == name.lowercased() }
         saveFacesToDisk()

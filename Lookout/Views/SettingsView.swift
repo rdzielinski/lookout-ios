@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var settings: SettingsManager
     @Environment(\.dismiss) var dismiss
+    @ObservedObject var glassesService: GlassesService
     @StateObject private var speechService = SpeechService()
     @StateObject private var faceMemory = FaceMemoryService()
     @StateObject private var placeMemory = PlaceMemoryService()
@@ -47,7 +48,9 @@ struct SettingsView: View {
                             apiKeyField(label: "OpenAI API Key", placeholder: "sk-...", text: $settings.openAIAPIKey)
                             glassDivider()
                             apiKeyField(label: "Google Places (Optional)", placeholder: "AIza...", text: $settings.googlePlacesAPIKey)
-                            settingsFooter("Stored locally on device. Flight tracking uses OpenSky (free). Landmarks fall back to Wikipedia without Google key.")
+                            glassDivider()
+                            apiKeyField(label: "FlightRadar24 (Optional)", placeholder: "fr24_...", text: $settings.flightradar24APIKey)
+                            settingsFooter("Stored locally on device. FlightRadar24 provides rich flight data (airline, route, aircraft type). Falls back to OpenSky (free) without FR24 key.")
                         }
 
                         // Meta Ray-Ban Glasses
@@ -59,6 +62,113 @@ struct SettingsView: View {
                             glassToggle("Glasses Mode", icon: "eyeglasses", isOn: $settings.glassesMode)
 
                             if settings.glassesMode {
+                                glassDivider()
+
+                                // Connection status card
+                                VStack(spacing: 10) {
+                                    // Status row
+                                    HStack {
+                                        Image(systemName: glassesConnectionIcon)
+                                            .font(.footnote)
+                                            .foregroundStyle(glassesConnectionColor)
+                                            .frame(width: 20)
+                                        Text(glassesConnectionLabel)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.white)
+                                        Spacer()
+                                        Text(glassesService.connectionState.rawValue)
+                                            .font(.caption.weight(.medium))
+                                            .foregroundStyle(glassesConnectionColor)
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(glassesConnectionColor.opacity(0.15), in: Capsule())
+                                    }
+
+                                    // Attempt info during retry
+                                    if let attemptInfo = glassesService.connectionAttemptInfo,
+                                       glassesService.connectionState == .connecting {
+                                        HStack(spacing: 6) {
+                                            ProgressView().tint(.orange).scaleEffect(0.7)
+                                            Text(attemptInfo)
+                                                .font(.caption).foregroundStyle(.orange.opacity(0.8))
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.leading, 30)
+                                    }
+
+                                    // Error message
+                                    if glassesService.connectionState == .error,
+                                       let errorMsg = glassesService.lastError {
+                                        Text(errorMsg)
+                                            .font(.caption)
+                                            .foregroundStyle(.red.opacity(0.9))
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.leading, 30)
+                                    }
+
+                                    // Action buttons
+                                    HStack(spacing: 10) {
+                                        if glassesService.connectionState == .disconnected || glassesService.connectionState == .error {
+                                            Button {
+                                                glassesService.retryConnection()
+                                            } label: {
+                                                Label(
+                                                    glassesService.connectionState == .error ? "Retry" : "Connect Glasses",
+                                                    systemImage: glassesService.connectionState == .error ? "arrow.clockwise" : "link"
+                                                )
+                                                .font(.subheadline.weight(.medium))
+                                                .foregroundStyle(.white)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 10)
+                                                .background(.cyan, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                            }
+                                        } else if glassesService.connectionState == .connecting {
+                                            Button {
+                                                glassesService.disconnect()
+                                            } label: {
+                                                Label("Cancel", systemImage: "xmark")
+                                                    .font(.subheadline.weight(.medium))
+                                                    .foregroundStyle(.white)
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding(.vertical, 10)
+                                                    .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                            }
+                                        } else if glassesService.connectionState == .connected || glassesService.connectionState == .streaming {
+                                            Button {
+                                                glassesService.disconnect()
+                                            } label: {
+                                                Label("Disconnect", systemImage: "link.badge.plus")
+                                                    .font(.subheadline.weight(.medium))
+                                                    .foregroundStyle(.red)
+                                                    .frame(maxWidth: .infinity)
+                                                    .padding(.vertical, 10)
+                                                    .background(.red.opacity(0.15), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                            }
+                                        }
+
+                                        Button {
+                                            GlassesService.openBluetoothSettings()
+                                        } label: {
+                                            Label("Bluetooth", systemImage: "antenna.radiowaves.left.and.right")
+                                                .font(.subheadline.weight(.medium))
+                                                .foregroundStyle(.white)
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 10)
+                                                .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                        }
+                                    }
+
+                                    if let name = glassesService.deviceName {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption2).foregroundStyle(.green)
+                                            Text(name)
+                                                .font(.caption).foregroundStyle(.white.opacity(0.5))
+                                        }
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.leading, 30)
+                                    }
+                                }
+
                                 glassDivider()
                                 VStack(alignment: .leading, spacing: 6) {
                                     Text("Trigger Phrase")
@@ -72,11 +182,17 @@ struct SettingsView: View {
                                 }
                                 glassDivider()
                                 glassToggle("Auto-Listen on Connect", icon: "mic.fill", isOn: $settings.glassesAutoListen)
+                                glassDivider()
+                                glassToggle("Camera Button Trigger", icon: "camera.circle.fill", isOn: $settings.glassesCameraButtonEnabled)
+                                glassDivider()
+                                glassToggle("Audio-Only Mode", icon: "speaker.wave.2.fill", isOn: $settings.audioOnlyGlasses)
+                                glassDivider()
+                                glassToggle("Hands-Free Follow-Up", icon: "bubble.left.and.bubble.right.fill", isOn: $settings.handsFreeChatEnabled)
                             }
 
                             settingsFooter(
                                 settings.glassesMode
-                                ? "Say your trigger phrase to scan. Results spoken through glasses speakers."
+                                ? "Say your trigger phrase or press the camera button on your glasses to scan. Results spoken through glasses speakers. Audio-Only skips the screen UI. Hands-Free auto-listens for follow-up questions."
                                 : "Connect Meta Ray-Ban for hands-free scanning. Requires Meta AI app."
                             )
                         }
@@ -560,6 +676,36 @@ struct SettingsView: View {
         speechService.elevenLabsAPIKey = settings.elevenLabsAPIKey
         speechService.elevenLabsVoiceId = settings.elevenLabsVoiceId
         speechService.selectedVoice = settings.selectedVoiceStyle
+    }
+
+    // MARK: - Glasses Connection Helpers
+
+    private var glassesConnectionColor: Color {
+        switch glassesService.connectionState {
+        case .connected, .streaming: return .green
+        case .connecting, .searching: return .orange
+        case .error: return .red
+        case .disconnected: return .white.opacity(0.4)
+        }
+    }
+
+    private var glassesConnectionIcon: String {
+        switch glassesService.connectionState {
+        case .connected, .streaming: return "checkmark.circle.fill"
+        case .connecting, .searching: return "antenna.radiowaves.left.and.right"
+        case .error: return "exclamationmark.triangle.fill"
+        case .disconnected: return "link.badge.plus"
+        }
+    }
+
+    private var glassesConnectionLabel: String {
+        switch glassesService.connectionState {
+        case .connected, .streaming: return "Glasses Connected"
+        case .connecting: return "Looking for glasses..."
+        case .searching: return "Registering..."
+        case .error: return "Connection Failed"
+        case .disconnected: return "Not Connected"
+        }
     }
 }
 

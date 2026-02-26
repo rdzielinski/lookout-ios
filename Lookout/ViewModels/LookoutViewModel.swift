@@ -1,6 +1,18 @@
 import SwiftUI
 import AVFoundation
 import CoreLocation
+import Combine
+
+// MARK: - Glasses Flow State Machine
+enum GlassesFlowState: String {
+    case idle                    // Listening for trigger phrase
+    case scanning                // Photo captured, AI pipeline running
+    case speakingResult          // TTS speaking the scan result
+    case listeningForFollowUp    // Mic open, waiting for user question
+    case processingFollowUp      // Sending follow-up to AI
+    case speakingFollowUp        // TTS speaking follow-up answer
+    case cooldown                // Brief pause before returning to idle
+}
 
 @MainActor
 class LookoutViewModel: ObservableObject {
@@ -12,6 +24,10 @@ class LookoutViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var cameraPermissionGranted = false
     @Published var micPermissionGranted = false
+
+    // Audio-only & hands-free glasses mode
+    @Published var isAudioOnlyMode = false
+    @Published var glassesFlowState: GlassesFlowState = .idle
     
     // Camera flip
     @Published var isUsingFrontCamera = false
@@ -51,6 +67,13 @@ class LookoutViewModel: ObservableObject {
     // Siri scan observer
     private var siriObserver: Any?
 
+    // Audio-only / hands-free state
+    private var glassesConnectionCancellable: AnyCancellable?
+    private var followUpTimeoutTask: Task<Void, Never>?
+    private var silenceDetectionTask: Task<Void, Never>?
+    private var conversationTurnCount = 0
+    private let maxConversationTurns = 5
+
     // MARK: - Camera
     let captureSession = AVCaptureSession()
     private var photoOutput = AVCapturePhotoOutput()
@@ -73,6 +96,22 @@ class LookoutViewModel: ObservableObject {
         
         // Setup glasses mode if enabled (includes voice trigger for glasses)
         setupGlassesMode()
+
+        // Auto-enable audio-only mode when glasses connect
+        glassesConnectionCancellable = glassesService.$isGlassesConnected
+            .receive(on: RunLoop.main)
+            .sink { [weak self] connected in
+                guard let self, let s = self.settings else { return }
+                if s.glassesMode && s.audioOnlyGlasses && connected {
+                    if !self.isAudioOnlyMode {
+                        self.isAudioOnlyMode = true
+                        self.haptics.audioOnlyConfirmed()
+                    }
+                } else if !connected {
+                    self.isAudioOnlyMode = false
+                    self.glassesFlowState = .idle
+                }
+            }
         
         // NOTE: voice trigger is NOT started here.
         // It is started in startVoiceTriggerIfReady(), called from checkPermissions()
@@ -123,6 +162,26 @@ class LookoutViewModel: ObservableObject {
             }
         }
         
+        // Wire hardware camera button — fires when user presses camera button on glasses
+        glassesService.cameraButtonEnabled = settings.glassesCameraButtonEnabled
+        glassesService.onCameraButtonCaptured = { [weak self] imageData in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                // Ignore if already processing a scan
+                guard !self.isCapturing else {
+                    #if DEBUG
+                    print("🕶️ Camera button ignored — already capturing")
+                    #endif
+                    return
+                }
+                #if DEBUG
+                print("🕶️ Camera button triggered scan")
+                #endif
+                self.haptics.capturePressed()
+                self.processGlassesPhoto(imageData)
+            }
+        }
+
         // Wire voice trigger — use glasses camera if connected, phone camera if not
         glassesService.onVoiceTriggerDetected = { [weak self] in
             Task { @MainActor [weak self] in
@@ -177,38 +236,48 @@ class LookoutViewModel: ObservableObject {
         glassesService.startVoiceTriggerListening()
     }
     
-    /// Process a photo captured from the glasses â€” runs the same pipeline as the phone camera.
+    /// Process a photo captured from the glasses — runs the same pipeline as the phone camera.
+    /// In audio-only mode, skips visual UI updates and just speaks results.
+    /// When hands-free is enabled, enters the conversation state machine after speaking.
     private func processGlassesPhoto(_ imageData: Data) {
         guard let settings = settings, let skillRouter = skillRouter else { return }
         guard settings.hasValidAPIKey else { return }
-        
+
+        let audioOnly = isAudioOnlyMode
         isCapturing = true
         errorMessage = nil
         currentFaceMatches = []
-        haptics.capturePressed()
+        haptics.scanStarted()
         glassesService.pauseVoiceTrigger()
-        
+        glassesFlowState = .scanning
+
         conversationService?.clear()
         conversationMessages = []
-        
+
+        // Glasses photos are wider angle / lower quality — relax face detection threshold
+        faceMemory.minimumFaceArea = 0.006
+
         Task {
+            defer { faceMemory.minimumFaceArea = 0.012 }
             do {
                 var query = LookoutQuery(imageData: imageData)
-                query.status = .analyzing
-                currentQuery = query
-                showResult = true
-                pendingFaceImageData = imageData
-                
-                query.status = .routing
-                currentQuery = query
-                
+
+                if !audioOnly {
+                    query.status = .analyzing
+                    currentQuery = query
+                    showResult = true
+                    pendingFaceImageData = imageData
+                }
+
+                haptics.analyzing()
+
                 let environmentSignals = await gatherEnvironmentSignals()
-                
+
                 let processed = try await skillRouter.processImage(
                     imageData,
                     location: locationManager.currentLocation,
                     environment: environmentSignals,
-                    onStatusUpdate: { [weak self] status in
+                    onStatusUpdate: audioOnly ? nil : { [weak self] status in
                         Task { @MainActor [weak self] in
                             guard let self else { return }
                             var q = self.currentQuery ?? LookoutQuery(imageData: imageData)
@@ -217,22 +286,30 @@ class LookoutViewModel: ObservableObject {
                         }
                     }
                 )
-                
+
                 query.aiResponse = processed.aiResponse
                 query.skillResult = processed.skillResult
                 query.status = .complete
-                currentQuery = query
+                if !audioOnly {
+                    currentQuery = query
+                    pendingFaceImageData = imageData
+                }
                 currentFaceMatches = processed.faceMatches
-                
+
+                // Haptic for recognized faces
+                if processed.faceMatches.contains(where: { $0.name != nil }) {
+                    haptics.personRecognized()
+                }
+
                 haptics.resultReady()
                 queryHistory.insert(query, at: 0)
                 persistLastScan(result: processed.skillResult)
-                
+
                 let currentItemRepeatCount = userContext.repeatCount(
                     forTitle: processed.skillResult.title,
                     category: processed.aiResponse.category
                 )
-                
+
                 let contextString = userContext.buildContextPrompt(
                     personalContext: settings.personalContext,
                     faceContext: faceMemory.contextSummary,
@@ -241,7 +318,7 @@ class LookoutViewModel: ObservableObject {
                     currentScanTitle: processed.skillResult.title,
                     currentScanCategory: processed.aiResponse.category
                 )
-                
+
                 conversationService?.userContextString = contextString
                 conversationService?.startConversation(
                     imageData: imageData,
@@ -251,23 +328,58 @@ class LookoutViewModel: ObservableObject {
                     nearbyPlace: processed.nearbyPlace
                 )
                 conversationMessages = conversationService?.messages ?? []
-                
-                // Glasses mode: always speak results
+
+                // Speak results
                 syncVoiceSettings()
+                let useHandsFree = settings.handsFreeChatEnabled && audioOnly
+
+                if useHandsFree {
+                    glassesFlowState = .speakingResult
+                    conversationTurnCount = 0
+                }
+
                 if settings.smartNarrationEnabled {
-                    _ = await speakSmartNarration(
-                        processed: processed,
-                        contextString: contextString,
+                    let narrationDebug = try? await smartNarration?.generateNarrationDebug(
+                        skillResult: processed.skillResult,
+                        aiDescription: processed.aiResponse.description,
+                        faceMatches: processed.faceMatches,
+                        nearbyPlace: processed.nearbyPlace,
+                        userContext: contextString,
+                        currentItemTitle: processed.skillResult.title,
                         currentItemRepeatCount: currentItemRepeatCount
                     )
+
+                    if let text = narrationDebug?.outputText, !text.isEmpty {
+                        if useHandsFree {
+                            speechService.speak(text) { [weak self] in
+                                Task { @MainActor [weak self] in
+                                    self?.startHandsFreeFollowUp()
+                                }
+                            }
+                        } else {
+                            speechService.speak(text)
+                        }
+                    }
                 } else {
                     let segments = speechService.buildSpeechText(from: processed.skillResult)
-                    speechService.speakSegments(segments)
+                    if useHandsFree {
+                        let combined = segments.joined(separator: " ")
+                        speechService.speak(combined) { [weak self] in
+                            Task { @MainActor [weak self] in
+                                self?.startHandsFreeFollowUp()
+                            }
+                        }
+                    } else {
+                        speechService.speakSegments(segments)
+                    }
                 }
-                
+
                 isCapturing = false
-                glassesService.resumeVoiceTrigger()
-                
+                if !useHandsFree {
+                    glassesFlowState = .idle
+                    glassesService.resumeVoiceTrigger()
+                }
+
             } catch {
                 if !isOfflineMode {
                     isOfflineMode = true
@@ -276,30 +388,36 @@ class LookoutViewModel: ObservableObject {
                         query.aiResponse = offlineResult.toAIResponse()
                         query.skillResult = offlineResult.toSkillResult()
                         query.status = .complete
-                        currentQuery = query
-                        
+                        if !audioOnly { currentQuery = query }
+
                         haptics.resultReady()
                         queryHistory.insert(query, at: 0)
                         persistLastScan(result: offlineResult.toSkillResult())
-                        
+
                         syncVoiceSettings()
                         let segments = speechService.buildSpeechText(from: offlineResult.toSkillResult())
                         speechService.speakSegments(segments)
-                        
+
                         isCapturing = false
-                        glassesService.resumeVoiceTrigger()
+                        endHandsFreeConversation()
                         return
                     }
                 }
-                
-                var query = currentQuery ?? LookoutQuery(imageData: nil)
-                query.status = .error
-                query.errorMessage = error.localizedDescription
-                currentQuery = query
+
+                if !audioOnly {
+                    var query = currentQuery ?? LookoutQuery(imageData: nil)
+                    query.status = .error
+                    query.errorMessage = error.localizedDescription
+                    currentQuery = query
+                }
                 errorMessage = error.localizedDescription
                 isCapturing = false
-                glassesService.resumeVoiceTrigger()
                 haptics.error()
+
+                if audioOnly {
+                    speechService.speak("Sorry, something went wrong.")
+                }
+                endHandsFreeConversation()
             }
         }
     }
@@ -617,16 +735,21 @@ class LookoutViewModel: ObservableObject {
                 query.status = .complete
                 currentQuery = query
                 currentFaceMatches = processed.faceMatches
-                
+
+                // Haptic for recognized faces
+                if processed.faceMatches.contains(where: { $0.name != nil }) {
+                    haptics.personRecognized()
+                }
+
                 haptics.resultReady()
                 queryHistory.insert(query, at: 0)
                 persistLastScan(result: processed.skillResult)
-                
+
                 let currentItemRepeatCount = userContext.repeatCount(
                     forTitle: processed.skillResult.title,
                     category: processed.aiResponse.category
                 )
-                
+
                 let contextString = userContext.buildContextPrompt(
                     personalContext: settings.personalContext,
                     faceContext: faceMemory.contextSummary,
@@ -635,9 +758,9 @@ class LookoutViewModel: ObservableObject {
                     currentScanTitle: processed.skillResult.title,
                     currentScanCategory: processed.aiResponse.category
                 )
-                
+
                 var narrationDebug: NarrationDebugResult?
-                
+
                 conversationService?.userContextString = contextString
                 conversationService?.startConversation(
                     imageData: imageData,
@@ -738,6 +861,15 @@ class LookoutViewModel: ObservableObject {
         contextString: String,
         currentItemRepeatCount: Int
     ) async -> NarrationDebugResult? {
+        // Build face relationships dictionary for richer narration
+        let faceRelationships = Dictionary(
+            uniqueKeysWithValues: processed.faceMatches.compactMap { match -> (String, String)? in
+                guard let name = match.name else { return nil }
+                let rel = faceMemory.relationship(for: name) ?? ""
+                return (name, rel)
+            }
+        )
+
         do {
             let narrationDebug = try await smartNarration?.generateNarrationDebug(
                 skillResult: processed.skillResult,
@@ -746,9 +878,10 @@ class LookoutViewModel: ObservableObject {
                 nearbyPlace: processed.nearbyPlace,
                 userContext: contextString,
                 currentItemTitle: processed.skillResult.title,
-                currentItemRepeatCount: currentItemRepeatCount
+                currentItemRepeatCount: currentItemRepeatCount,
+                faceRelationships: faceRelationships
             )
-            
+
             if let text = narrationDebug?.outputText, !text.isEmpty {
                 speechService.speak(text)
             }
@@ -961,11 +1094,14 @@ class LookoutViewModel: ObservableObject {
     }
     
     func sendFollowUp(_ question: String) {
+        // Check for face naming intent before sending to AI
+        if checkForFaceNaming(question: question) { return }
+
         guard let conversationService = conversationService, conversationService.hasContext else {
             errorMessage = "Take a photo first to start a conversation"
             return
         }
-        
+
         checkForPetNaming(question: question)
         
         conversationMessages.append(ConversationMessage(role: .user, text: question))
@@ -993,7 +1129,203 @@ class LookoutViewModel: ObservableObject {
         haptics.interrupted()
         startAskingQuestion()
     }
-    
+
+    // MARK: - Hands-Free Conversation (Glasses)
+
+    private func startHandsFreeFollowUp() {
+        guard let settings, settings.handsFreeChatEnabled else {
+            endHandsFreeConversation()
+            return
+        }
+        guard conversationTurnCount < maxConversationTurns else {
+            endHandsFreeConversation()
+            return
+        }
+
+        glassesFlowState = .listeningForFollowUp
+        haptics.listeningForFollowUp()
+
+        do {
+            try voiceInput.startListening()
+        } catch {
+            endHandsFreeConversation()
+            return
+        }
+
+        // Timeout — if no speech after configured seconds, return to idle
+        let timeout = settings?.followUpTimeoutSeconds ?? 12.0
+        followUpTimeoutTask?.cancel()
+        followUpTimeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            guard self.glassesFlowState == .listeningForFollowUp else { return }
+
+            let transcript = self.voiceInput.stopAndGetTranscript()
+            if transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                self.endHandsFreeConversation()
+            } else {
+                self.processHandsFreeFollowUp(transcript)
+            }
+        }
+
+        // Silence detection — poll transcript for 2s of stable content
+        startSilenceDetection()
+    }
+
+    private func startSilenceDetection() {
+        silenceDetectionTask?.cancel()
+        silenceDetectionTask = Task { @MainActor [weak self] in
+            var lastLength = 0
+            var stableCount = 0
+
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard let self, self.glassesFlowState == .listeningForFollowUp else { return }
+
+                let currentLength = self.voiceInput.transcript.count
+                if currentLength > 5 && currentLength == lastLength {
+                    stableCount += 1
+                    if stableCount >= 4 { // 2 seconds of silence after speech
+                        let transcript = self.voiceInput.stopAndGetTranscript()
+                        self.followUpTimeoutTask?.cancel()
+                        self.processHandsFreeFollowUp(transcript)
+                        return
+                    }
+                } else {
+                    stableCount = 0
+                }
+                lastLength = currentLength
+            }
+        }
+    }
+
+    private func processHandsFreeFollowUp(_ question: String) {
+        guard !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            endHandsFreeConversation()
+            return
+        }
+
+        glassesFlowState = .processingFollowUp
+        conversationTurnCount += 1
+        silenceDetectionTask?.cancel()
+        followUpTimeoutTask?.cancel()
+
+        // Check for face naming intent
+        if checkForFaceNaming(question: question) {
+            return // Face saved; confirmation spoken inside the method
+        }
+
+        guard let conversationService = conversationService, conversationService.hasContext else {
+            endHandsFreeConversation()
+            return
+        }
+
+        checkForPetNaming(question: question)
+        conversationMessages.append(ConversationMessage(role: .user, text: question))
+
+        Task {
+            do {
+                let response = try await conversationService.askFollowUp(question)
+                conversationMessages = conversationService.messages
+                haptics.followUpReady()
+
+                glassesFlowState = .speakingFollowUp
+                syncVoiceSettings()
+                speechService.speak(response) { [weak self] in
+                    Task { @MainActor [weak self] in
+                        self?.startHandsFreeFollowUp()
+                    }
+                }
+            } catch {
+                haptics.error()
+                speechService.speak("Sorry, I couldn't process that.") { [weak self] in
+                    Task { @MainActor [weak self] in
+                        self?.endHandsFreeConversation()
+                    }
+                }
+            }
+        }
+    }
+
+    private func endHandsFreeConversation() {
+        glassesFlowState = .cooldown
+        followUpTimeoutTask?.cancel()
+        silenceDetectionTask?.cancel()
+        voiceInput.stopListening()
+        conversationTurnCount = 0
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1s cooldown
+            guard let self else { return }
+            self.glassesFlowState = .idle
+            self.glassesService.resumeVoiceTrigger()
+        }
+    }
+
+    // MARK: - Voice-Based Face Naming
+
+    /// Parse follow-up for face-naming intent. Returns true if a face was saved.
+    private func checkForFaceNaming(question: String) -> Bool {
+        let lower = question.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let hasUnknownFace = currentFaceMatches.contains { $0.isNew }
+        guard hasUnknownFace else { return false }
+
+        // Patterns: "That's [Name]", "His name is [Name]", "Call him/her [Name]", "Remember them as [Name]"
+        let patterns: [(regex: String, nameGroup: Int, relationshipGroup: Int?)] = [
+            (#"(?:that'?s|this is)\s+(?:my\s+)?(friend|coworker|wife|husband|partner|sister|brother|mom|dad|boss|neighbor|colleague)?\s*(.+)"#, 2, 1),
+            (#"(?:his|her|their)\s+name\s+is\s+(.+)"#, 1, nil),
+            (#"(?:call|named)\s+(?:him|her|them)\s+(.+)"#, 1, nil),
+            (#"(?:remember|save)\s+(?:this face as|them as|him as|her as)\s+(.+)"#, 1, nil),
+        ]
+
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern.regex, options: .caseInsensitive) else { continue }
+            let nsRange = NSRange(lower.startIndex..., in: lower)
+
+            if let match = regex.firstMatch(in: lower, range: nsRange),
+               let nameRange = Range(match.range(at: pattern.nameGroup), in: lower) {
+                var name = String(lower[nameRange])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: ".,!?"))
+
+                guard !name.isEmpty, name.count >= 2, name.count <= 30 else { continue }
+                name = name.prefix(1).uppercased() + name.dropFirst()
+
+                let skipWords: Set<String> = ["it", "that", "this", "here", "there", "mine", "someone", "a person"]
+                guard !skipWords.contains(name.lowercased()) else { continue }
+
+                var relationship = ""
+                if let relGroup = pattern.relationshipGroup,
+                   let relRange = Range(match.range(at: relGroup), in: lower) {
+                    relationship = String(lower[relRange]).trimmingCharacters(in: .whitespaces)
+                }
+
+                // Save the face
+                let savedName = name
+                let savedRelationship = relationship
+                Task {
+                    if let imageData = pendingFaceImageData ?? currentQuery?.imageData {
+                        let success = await faceMemory.saveFace(name: savedName, imageData: imageData, relationship: savedRelationship)
+                        if success {
+                            haptics.resultReady()
+                            let msg = savedRelationship.isEmpty
+                                ? "Got it, I'll remember \(savedName)."
+                                : "Got it, I'll remember your \(savedRelationship) \(savedName)."
+                            speechService.speak(msg) { [weak self] in
+                                Task { @MainActor [weak self] in
+                                    self?.startHandsFreeFollowUp()
+                                }
+                            }
+                        }
+                    }
+                }
+                return true
+            }
+        }
+        return false
+    }
+
     // MARK: - Photo Capture
     
     private func capturePhoto() async throws -> Data {

@@ -22,7 +22,8 @@ class SmartNarrationService {
         nearbyPlace: SavedPlace? = nil,
         userContext: String = "",
         currentItemTitle: String = "",
-        currentItemRepeatCount: Int? = nil
+        currentItemRepeatCount: Int? = nil,
+        faceRelationships: [String: String] = [:]
     ) async throws -> String {
         let debug = try await generateNarrationDebug(
             skillResult: skillResult,
@@ -31,11 +32,12 @@ class SmartNarrationService {
             nearbyPlace: nearbyPlace,
             userContext: userContext,
             currentItemTitle: currentItemTitle,
-            currentItemRepeatCount: currentItemRepeatCount
+            currentItemRepeatCount: currentItemRepeatCount,
+            faceRelationships: faceRelationships
         )
         return debug.outputText
     }
-    
+
     func generateNarrationDebug(
         skillResult: SkillResult,
         aiDescription: String,
@@ -43,7 +45,8 @@ class SmartNarrationService {
         nearbyPlace: SavedPlace? = nil,
         userContext: String = "",
         currentItemTitle: String = "",
-        currentItemRepeatCount: Int? = nil
+        currentItemRepeatCount: Int? = nil,
+        faceRelationships: [String: String] = [:]
     ) async throws -> NarrationDebugResult {
         let prompt = buildNarrationPrompt(
             skillResult: skillResult,
@@ -52,7 +55,8 @@ class SmartNarrationService {
             nearbyPlace: nearbyPlace,
             userContext: userContext,
             currentItemTitle: currentItemTitle,
-            currentItemRepeatCount: currentItemRepeatCount
+            currentItemRepeatCount: currentItemRepeatCount,
+            faceRelationships: faceRelationships
         )
         
         let output: String
@@ -80,7 +84,8 @@ class SmartNarrationService {
         nearbyPlace: SavedPlace?,
         userContext: String,
         currentItemTitle: String,
-        currentItemRepeatCount: Int?
+        currentItemRepeatCount: Int?,
+        faceRelationships: [String: String] = [:]
     ) -> String {
         
         var contextParts: [String] = []
@@ -103,16 +108,22 @@ class SmartNarrationService {
         }
         contextParts.append("Source: \(skillResult.sourceApp)")
         
-        // Face context
+        // Face context with relationships
         let recognizedFaces = faceMatches.filter { $0.name != nil }
         if !recognizedFaces.isEmpty {
-            let names = recognizedFaces.compactMap { $0.name }
-            contextParts.append("Recognized people in frame: \(names.joined(separator: ", "))")
+            let descriptions = recognizedFaces.compactMap { match -> String? in
+                guard let name = match.name else { return nil }
+                if let relationship = faceRelationships[name], !relationship.isEmpty {
+                    return "\(name) (your \(relationship))"
+                }
+                return name
+            }
+            contextParts.append("Recognized people in frame: \(descriptions.joined(separator: ", "))")
         }
-        
+
         let unknownCount = faceMatches.filter { $0.isNew }.count
         if unknownCount > 0 {
-            contextParts.append("Unknown faces detected: \(unknownCount)")
+            contextParts.append("Unknown faces detected: \(unknownCount). The user can name them by saying \"That's [Name]\".")
         }
         
         // Place context
@@ -141,6 +152,8 @@ class SmartNarrationService {
         - NO bullet points, NO lists, NO markdown, NO asterisks
         - Lead with what it IS, then add the most interesting or useful detail
         - If you recognized a person, greet them by name naturally ("Hey, that's Sarah!")
+        - If a recognized person has a relationship (e.g., "your coworker"), use it naturally ("There's your coworker Sarah!")
+        - If unknown faces are detected, mention it briefly and naturally ("I see someone I don't recognize" or "There's someone new here")
         - If the user is at a familiar place, acknowledge it casually
         - Only mention repeat/familiarity counts when the prompt explicitly includes `Current item repeat_count` and it is >= 2
         - If `Current item repeat_count` is missing or < 2, do NOT imply repetition

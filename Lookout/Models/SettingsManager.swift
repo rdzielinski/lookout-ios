@@ -34,6 +34,7 @@ class SettingsManager: ObservableObject {
     @AppStorage("elevenLabsVoiceId") var elevenLabsVoiceId: String = "21m00Tcm4TlvDq8ikWAM"
     @AppStorage("elevenLabsVoiceName") var elevenLabsVoiceName: String = "Rachel"
     @AppStorage("adsbExchangeAPIKey") var adsbExchangeAPIKey: String = ""
+    @AppStorage("flightradar24APIKey") var flightradar24APIKey: String = ""
     @AppStorage("googlePlacesAPIKey") var googlePlacesAPIKey: String = ""
     @AppStorage("smartNarrationEnabled") var smartNarrationEnabled: Bool = true
     @AppStorage("faceRecognitionEnabled") var faceRecognitionEnabled: Bool = true
@@ -45,6 +46,10 @@ class SettingsManager: ObservableObject {
     @AppStorage("glassesMode") var glassesMode: Bool = false
     @AppStorage("glassesTriggerPhrase") var glassesTriggerPhrase: String = "lookout"
     @AppStorage("glassesAutoListen") var glassesAutoListen: Bool = true
+    @AppStorage("audioOnlyGlasses") var audioOnlyGlasses: Bool = true
+    @AppStorage("handsFreeChatEnabled") var handsFreeChatEnabled: Bool = true
+    @AppStorage("followUpTimeoutSeconds") var followUpTimeoutSeconds: Double = 12.0
+    @AppStorage("glassesCameraButtonEnabled") var glassesCameraButtonEnabled: Bool = true
     
     var hasValidAPIKey: Bool {
         switch selectedProvider {
