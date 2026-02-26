@@ -57,7 +57,9 @@ class SettingsManager: ObservableObject {
     @AppStorage("continuousScanInterval") var continuousScanInterval: Double = 8.0
     @AppStorage("proactiveNarrationEnabled") var proactiveNarrationEnabled: Bool = true
     @AppStorage("replayBufferEnabled") var replayBufferEnabled: Bool = true
-    
+    @AppStorage("cameraAutoSleepEnabled") var cameraAutoSleepEnabled: Bool = true
+    @AppStorage("cameraAutoSleepDelay") var cameraAutoSleepDelay: Double = 120  // seconds, 0 = disabled
+
     var hasValidAPIKey: Bool {
         switch selectedProvider {
         case .claude: return !claudeAPIKey.trimmingCharacters(in: .whitespaces).isEmpty

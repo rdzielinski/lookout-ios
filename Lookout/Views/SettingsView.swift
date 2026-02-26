@@ -241,6 +241,22 @@ struct SettingsView: View {
                             glassDivider()
                             glassToggle("Replay Buffer", icon: "backward.frame", isOn: $settings.replayBufferEnabled)
                             settingsFooter("Keeps last 30 seconds of frames so you can ask 'What did I just see?'")
+                            glassDivider()
+                            glassToggle("Camera Auto-Sleep", icon: "moon.fill", isOn: $settings.cameraAutoSleepEnabled)
+                            if settings.cameraAutoSleepEnabled {
+                                HStack {
+                                    Text("Timeout")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.white.opacity(0.7))
+                                    Spacer()
+                                    Text("\(Int(settings.cameraAutoSleepDelay))s")
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(.white)
+                                }
+                                Slider(value: $settings.cameraAutoSleepDelay, in: 30...300, step: 15)
+                                    .tint(.indigo)
+                            }
+                            settingsFooter("Automatically turns off the camera after inactivity to save battery. Say \"camera on\" or tap the bolt icon to wake.")
                         }
 
                         // About You

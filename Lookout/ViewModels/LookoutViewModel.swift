@@ -88,7 +88,11 @@ class LookoutViewModel: ObservableObject {
     let captureSession = AVCaptureSession()
     private var photoOutput = AVCapturePhotoOutput()
     private var currentCameraInput: AVCaptureDeviceInput?
-    
+
+    /// Whether the camera is currently sleeping (stopped to save battery).
+    @Published var isCameraSleeping = false
+    private var cameraAutoSleepTask: Task<Void, Never>?
+
     func configure(settings: SettingsManager) {
         self.settings = settings
         
@@ -557,6 +561,74 @@ class LookoutViewModel: ObservableObject {
         setupCameraSession(position: newPosition)
     }
     
+    // MARK: - Camera Power Management
+
+    /// Put the camera to sleep — stops the capture session to save battery.
+    /// The camera preview will freeze on the last frame. Call `wakeCamera()` to resume.
+    func sleepCamera() {
+        guard !isCameraSleeping else { return }
+        isCameraSleeping = true
+        cameraAutoSleepTask?.cancel()
+        cameraAutoSleepTask = nil
+        BackgroundKeepAliveService.shared.setContinuousScan(false)
+
+        let session = captureSession
+        Task.detached {
+            session.stopRunning()
+        }
+
+        if settings?.voiceOutputEnabled == true {
+            speechService.speak("Camera off.")
+        }
+        #if DEBUG
+        print("💤 Camera sleeping — session stopped")
+        #endif
+    }
+
+    /// Wake the camera from sleep — restarts the capture session.
+    func wakeCamera() {
+        guard isCameraSleeping else { return }
+        isCameraSleeping = false
+
+        let session = captureSession
+        Task.detached {
+            session.startRunning()
+        }
+
+        resetAutoSleepTimer()
+
+        if settings?.voiceOutputEnabled == true {
+            speechService.speak("Camera on.")
+        }
+        #if DEBUG
+        print("☀️ Camera awake — session resumed")
+        #endif
+    }
+
+    /// Toggle camera sleep/wake.
+    func toggleCameraPower() {
+        if isCameraSleeping {
+            wakeCamera()
+        } else {
+            sleepCamera()
+        }
+    }
+
+    /// Reset the auto-sleep timer. Called after every scan or user interaction.
+    func resetAutoSleepTimer() {
+        cameraAutoSleepTask?.cancel()
+
+        guard let delay = settings?.cameraAutoSleepDelay, delay > 0 else { return }
+        // Don't auto-sleep during continuous scan or glasses mode
+        guard !isContinuousScanActive, !isAudioOnlyMode else { return }
+
+        cameraAutoSleepTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            self.sleepCamera()
+        }
+    }
+
     // MARK: - Tap to Focus
     func focus(atNormalizedPoint point: CGPoint) {
         guard let device = currentCameraInput?.device else { return }
@@ -667,6 +739,18 @@ class LookoutViewModel: ObservableObject {
     // MARK: - Capture & Analyze (Enhanced Pipeline)
     
     func captureAndAnalyze() {
+        // Wake camera if sleeping (user tapped scan while camera was off)
+        if isCameraSleeping {
+            wakeCamera()
+            // Give the session a moment to restart before capturing
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                self.captureAndAnalyze()
+            }
+            return
+        }
+        resetAutoSleepTimer()
+
         guard let settings = settings, let skillRouter = skillRouter else {
             errorMessage = "Please configure your API key in Settings"
             return
@@ -1302,6 +1386,8 @@ class LookoutViewModel: ObservableObject {
     }
     
     func sendFollowUp(_ question: String) {
+        // Check for voice commands before sending to AI
+        if checkForVoiceCommand(question: question) { return }
         // Check for face naming intent before sending to AI
         if checkForFaceNaming(question: question) { return }
 
@@ -1468,6 +1554,68 @@ class LookoutViewModel: ObservableObject {
             self.glassesFlowState = .idle
             self.glassesService.resumeVoiceTrigger()
         }
+    }
+
+    // MARK: - Voice Commands
+
+    /// Intercept common voice commands before sending to AI.
+    /// Returns true if a command was handled locally.
+    private func checkForVoiceCommand(question: String) -> Bool {
+        let lower = question.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Camera power: "camera off", "sleep", "turn off camera", "stop camera"
+        if lower.contains("camera off") || lower.contains("turn off") || lower == "sleep"
+            || lower.contains("stop camera") || lower.contains("pause camera") {
+            sleepCamera()
+            return true
+        }
+
+        // Camera wake: "camera on", "wake up", "turn on camera", "start camera"
+        if lower.contains("camera on") || lower.contains("turn on") || lower == "wake up"
+            || lower.contains("start camera") || lower.contains("resume camera") {
+            wakeCamera()
+            return true
+        }
+
+        // Save parking: "save parking", "remember parking", "park here", "save my car"
+        if lower.contains("save parking") || lower.contains("remember parking")
+            || lower.contains("park here") || lower.contains("save my car")
+            || lower.contains("parked here") {
+            saveParkingSpot()
+            return true
+        }
+
+        // Find parking: "where did I park", "find my car", "where's my car"
+        if lower.contains("where") && (lower.contains("park") || lower.contains("my car")) {
+            if let spot = recallParkingSpot() {
+                let msg = "You parked at \(spot.notes). I can show you directions."
+                speechService.speak(msg)
+            } else {
+                speechService.speak("I don't have a saved parking spot.")
+            }
+            return true
+        }
+
+        // Replay: "what did I just see", "what was that", "replay"
+        if lower.contains("what did i just") || lower.contains("what was that")
+            || lower == "replay" || lower.contains("go back") {
+            replayLastFrame()
+            return true
+        }
+
+        // Continuous scan: "start scanning", "keep scanning", "stop scanning"
+        if lower.contains("start scan") || lower.contains("keep scan") || lower.contains("continuous scan") {
+            startContinuousScan()
+            speechService.speak("Continuous scanning started.")
+            return true
+        }
+        if lower.contains("stop scan") {
+            stopContinuousScan()
+            speechService.speak("Continuous scanning stopped.")
+            return true
+        }
+
+        return false
     }
 
     // MARK: - Voice-Based Face Naming
