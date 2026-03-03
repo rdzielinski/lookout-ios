@@ -18,6 +18,7 @@ final class TripRecorder {
     var plannedRouteStore: PlannedRouteStore?
 
     private var lastSnapshotTime: Date?
+    private var lastUpdateTime: Date?
     private var lastSpeedMph: Double = 0
     private let snapshotInterval: TimeInterval = 5.0  // Snapshot every 5 seconds
     private let storageURL: URL
@@ -33,7 +34,9 @@ final class TripRecorder {
     func startTrip() {
         currentTrip = Trip()
         isRecording = true
-        lastSnapshotTime = Date()
+        let now = Date()
+        lastSnapshotTime = now
+        lastUpdateTime = now
         lastSpeedMph = 0
         locationTracker?.startTracking()
     }
@@ -75,26 +78,31 @@ final class TripRecorder {
 
         let now = Date()
 
+        // Compute actual elapsed time since last update (not a hardcoded assumption)
+        let timeDelta = lastUpdateTime.map { now.timeIntervalSince($0) } ?? 0.25
+        lastUpdateTime = now
+
+        // Clamp timeDelta to avoid spikes if the timer was delayed (e.g., app in background)
+        let clampedDelta = min(timeDelta, 5.0)
+
         // Accumulate time
         let elapsed = trip.startTime.distance(to: now)
         trip.totalSeconds = elapsed
 
-        // Accumulate EV time
+        // Accumulate EV time using actual elapsed time
         if data.isEVMode {
-            // Approximate: each update is ~0.25s
-            trip.evModeSeconds += 0.25
+            trip.evModeSeconds += clampedDelta
         }
 
-        // Accumulate distance (speed × time increment)
+        // Accumulate distance (speed × actual time increment)
         let speedMph = data.vehicleSpeedMph
-        let timeDelta: Double = 0.25 // approximate cycle time
-        let distanceDelta = speedMph * (timeDelta / 3600.0) // miles
+        let distanceDelta = speedMph * (clampedDelta / 3600.0) // miles
         trip.distanceMiles += distanceDelta
 
-        // Accumulate fuel (GPH × time)
+        // Accumulate fuel (GPH × actual time)
         let gph = data.gallonsPerHour
         if gph > 0 {
-            trip.fuelUsedGallons += gph * (timeDelta / 3600.0)
+            trip.fuelUsedGallons += gph * (clampedDelta / 3600.0)
         }
 
         // Track maximums

@@ -50,11 +50,15 @@ struct CoachingView: View {
                    currentTrip.distanceMiles > 0.1,
                    let tracker = tripRecorder.locationTracker,
                    tracker.currentLatitude != 0 {
-                    let startLat = tracker.currentLatitude
-                    let startLon = tracker.currentLongitude
+                    let currentLat = tracker.currentLatitude
+                    let currentLon = tracker.currentLongitude
+                    // Use trip's first GPS snapshot as route start, current position as end
+                    let firstGPS = currentTrip.snapshots.first(where: { $0.latitude != nil })
+                    let startLat = firstGPS?.latitude ?? currentLat
+                    let startLon = firstGPS?.longitude ?? currentLon
                     if let matchedCluster = routeStore.matchingCluster(
                         startLat: startLat, startLon: startLon,
-                        endLat: startLat, endLon: startLon
+                        endLat: currentLat, endLon: currentLon
                     ) {
                         Section("Route") {
                             RouteComparisonView(

@@ -227,7 +227,9 @@ final class EfficiencyAnalyzer {
     // MARK: - Rule 7: Climate Impact
 
     private func checkClimateImpact(_ data: DrivingDataStore) {
-        guard data.ambientTemp != 0 else { return }
+        // DrivingDataStore initializes ambientTemp to -40 (OBD "no reading" sentinel).
+        // 0°C is a valid temperature — don't use it as a "no data" check.
+        guard data.ambientTemp > -39 else { return }
 
         if data.ambientTemp > 35 && data.engineLoad > 50 {
             addTip(

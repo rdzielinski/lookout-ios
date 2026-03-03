@@ -4,8 +4,11 @@ import UIKit
 // MARK: - AppDelegate (shared stores for CarPlay access)
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-    let dataStore = DrivingDataStore()
-    let analyzer = EfficiencyAnalyzer()
+    /// Shared data store — injected by HybridCoachApp so both phone UI and CarPlay
+    /// read from the same instance. Previously these were separate objects, causing
+    /// CarPlay to never receive live OBD data.
+    var dataStore: DrivingDataStore!
+    var analyzer: EfficiencyAnalyzer!
 
     func application(
         _ application: UIApplication,
@@ -45,6 +48,7 @@ struct HybridCoachApp: App {
     @State private var analysisTimer: Timer?
     @State private var useMockData = false
     @State private var mockAdapter: MockOBDAdapter?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -62,12 +66,25 @@ struct HybridCoachApp: App {
                 .environment(plannedRouteStore)
                 .preferredColorScheme(settings.appearanceMode.colorScheme)
                 .onAppear { setupCallbacks() }
-                .onDisappear { cleanup() }
                 .onChange(of: settings.simulatorMode) { _, isOn in
                     if isOn {
                         startMockMode()
                     } else {
                         stopMockMode()
+                    }
+                }
+                .onChange(of: settings.coachingIntensity) { _, intensity in
+                    // Reactively update coaching intensity when user changes it in Settings
+                    switch intensity {
+                    case .relaxed:    analyzer.intensityMultiplier = 0.8
+                    case .normal:     analyzer.intensityMultiplier = 1.0
+                    case .aggressive: analyzer.intensityMultiplier = 1.25
+                    }
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    // Save trip data when backgrounded — onDisappear is unreliable on iOS
+                    if newPhase == .background {
+                        cleanup()
                     }
                 }
         }
@@ -76,17 +93,15 @@ struct HybridCoachApp: App {
     // MARK: - Wiring
 
     private func setupCallbacks() {
-        // When BluetoothManager finds a ready adapter, start OBD polling
-        // Wire up analyzer store so BluetoothManager can populate GATT info
+        // Share the SAME store instances with AppDelegate so CarPlay reads live data
+        appDelegate.dataStore = dataStore
+        appDelegate.analyzer = analyzer
+
         // Wire location tracker + route store into trip recorder
         tripRecorder.locationTracker = locationTracker
         tripRecorder.routeStore = routeStore
         tripRecorder.plannedRouteStore = plannedRouteStore
         locationTracker.requestAuthorization()
-
-        // Sync stores into AppDelegate for CarPlay access
-        // Note: In production, you'd use shared references rather than copies.
-        // CarPlay scene reads from appDelegate.dataStore/analyzer directly.
 
         // Set coaching intensity multiplier from settings
         switch settings.coachingIntensity {

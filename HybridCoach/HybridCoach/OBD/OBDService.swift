@@ -6,8 +6,9 @@ import Foundation
 /// - High: RPM, Speed, MAF, Throttle — every cycle
 /// - Medium: Engine Load, Accel Pedal — every 2nd cycle
 /// - Low: Coolant/Intake/Ambient temps, Fuel Level, Baro — every 5th cycle
+@MainActor
 @Observable
-final class OBDService: @unchecked Sendable {
+final class OBDService {
 
     private(set) var isPolling = false
     private(set) var pollRate: Double = 0  // PIDs per second
@@ -21,16 +22,33 @@ final class OBDService: @unchecked Sendable {
 
     /// Target interval between complete polling cycles (seconds).
     /// Adaptive — speeds up when responses are fast, slows on errors.
-    private var pollInterval: TimeInterval = 0.1
+    private var pollInterval: TimeInterval = 0.25
+
+    /// Per-PID consecutive error counts. When a PID fails too many times in a row,
+    /// it is disabled rather than poisoning the global error counter.
+    private var pidErrorCounts: [String: Int] = [:]
+
+    /// PIDs disabled due to repeated failures (likely unsupported by vehicle).
+    private(set) var disabledPIDs: Set<String> = []
+
+    /// Max consecutive per-PID errors before disabling that PID.
+    private let maxPIDErrors = 5
 
     // MARK: - Public API
 
     func start(adapter: OBDAdapter, dataStore: DrivingDataStore) {
+        // Cancel any previous polling task to prevent leaked background Tasks
+        pollingTask?.cancel()
+        pollingTask = nil
+
         self.adapter = adapter
         self.dataStore = dataStore
         self.errorCount = 0
         self.lastError = nil
         self.cycleCount = 0
+        self.pidErrorCounts = [:]
+        self.disabledPIDs = []
+        self.pollInterval = 0.25
 
         isPolling = true
 
@@ -78,13 +96,11 @@ final class OBDService: @unchecked Sendable {
             // Calculate actual polling rate
             let elapsed = Date().timeIntervalSince(cycleStart)
             if elapsed > 0 {
-                let rate = Double(pidCount) / elapsed
-                await MainActor.run { self.pollRate = rate }
+                pollRate = Double(pidCount) / elapsed
             }
 
-            // Adaptive delay: if cycle was fast, add a small delay to avoid hammering
-            let targetCycleTime: TimeInterval = 0.25 // ~4 cycles/sec
-            let remaining = targetCycleTime - elapsed
+            // Use the adaptive pollInterval (not a hardcoded value)
+            let remaining = pollInterval - elapsed
             if remaining > 0 {
                 try? await Task.sleep(for: .milliseconds(Int(remaining * 1000)))
             }
@@ -94,41 +110,54 @@ final class OBDService: @unchecked Sendable {
     private func pollPID(_ pid: PIDDefinition) async -> Bool {
         guard let adapter else { return false }
 
+        // Skip PIDs that have been disabled due to repeated failures
+        if disabledPIDs.contains(pid.command) {
+            return false
+        }
+
         do {
             let bytes = try await adapter.sendPID(pid.command)
             let response = OBDResponse(pid: pid, rawBytes: bytes)
 
-            await MainActor.run { [weak self] in
-                self?.dataStore?.update(with: response)
+            dataStore?.update(with: response)
+
+            // Successful response — clear per-PID error count and decrease global pressure
+            pidErrorCounts[pid.command] = 0
+            if errorCount > 0 {
+                errorCount = max(0, errorCount - 1)
             }
 
-            // Successful response — decrease error pressure
-            if errorCount > 0 {
-                await MainActor.run { [weak self] in
-                    guard let self else { return }
-                    self.errorCount = max(0, self.errorCount - 1)
-                }
+            // Speed up polling on sustained success
+            if errorCount == 0 && pollInterval > 0.25 {
+                pollInterval = max(0.25, pollInterval * 0.9)
             }
 
             return true
         } catch {
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.errorCount += 1
-                self.lastError = "\(pid.name): \(error.localizedDescription)"
+            // Track per-PID errors separately from global errors
+            let pidErrors = (pidErrorCounts[pid.command] ?? 0) + 1
+            pidErrorCounts[pid.command] = pidErrors
+
+            if pidErrors >= maxPIDErrors {
+                // This PID is likely unsupported — disable it instead of killing all polling
+                disabledPIDs.insert(pid.command)
+                lastError = "\(pid.name): disabled (unsupported)"
+                print("OBDService: Disabled PID \(pid.command) (\(pid.name)) after \(pidErrors) consecutive failures")
+                return false
             }
 
-            // If too many errors, slow down polling
+            errorCount += 1
+            lastError = "\(pid.name): \(error.localizedDescription)"
+
+            // Slow down polling on sustained errors
             if errorCount > 10 {
                 pollInterval = min(pollInterval * 1.5, 2.0)
             }
 
-            // If extreme errors, stop polling
+            // Only stop on extreme global errors (not per-PID)
             if errorCount > 50 {
-                await MainActor.run { [weak self] in
-                    self?.isPolling = false
-                    self?.lastError = "Too many errors (\(self?.errorCount ?? 0)). Polling stopped. Check adapter connection."
-                }
+                isPolling = false
+                lastError = "Too many errors (\(errorCount)). Polling stopped. Check adapter connection."
                 return false
             }
 

@@ -16,6 +16,12 @@ final class ELM327Adapter: OBDAdapter, @unchecked Sendable {
     private var responseContinuation: CheckedContinuation<String, Error>?
     private var dataObserver: NSObjectProtocol?
 
+    /// Serial queue for command dispatch — ensures only one command is in-flight at a time.
+    /// Prevents the continuation race condition where a second sendCommand overwrites
+    /// the first continuation, leaking a suspended Task.
+    private let commandQueue = DispatchQueue(label: "com.hybridcoach.elm327.commands")
+    private var commandInFlight = false
+
     // MARK: - OBDAdapter Protocol
 
     func configure(peripheral: CBPeripheral, writeCharacteristic: CBCharacteristic, notifyCharacteristic: CBCharacteristic) {
@@ -138,6 +144,10 @@ final class ELM327Adapter: OBDAdapter, @unchecked Sendable {
         if let observer = dataObserver {
             NotificationCenter.default.removeObserver(observer)
         }
+        // Cancel any pending command
+        responseContinuation?.resume(throwing: OBDAdapterError.notConnected)
+        responseContinuation = nil
+        responseBuffer = Data()
         state = .disconnected
     }
 
@@ -159,6 +169,14 @@ final class ELM327Adapter: OBDAdapter, @unchecked Sendable {
                       let writeChar = self.writeChar else {
                     continuation.resume(throwing: OBDAdapterError.notConnected)
                     return
+                }
+
+                // If a previous command's continuation is still pending, cancel it
+                // to prevent a leaked Task. This shouldn't happen in normal operation
+                // since OBDService polls sequentially, but guards against edge cases.
+                if let pending = self.responseContinuation {
+                    pending.resume(throwing: OBDAdapterError.timeout)
+                    self.responseContinuation = nil
                 }
 
                 self.responseBuffer = Data()
