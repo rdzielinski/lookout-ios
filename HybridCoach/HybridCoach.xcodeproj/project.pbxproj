@@ -1,0 +1,731 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000012 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000011 /* CoreBluetooth.framework */; };
+		000000000000000000000014 /* Charts.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000013 /* Charts.framework */; };
+		000000000000000000000016 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* CoreLocation.framework */; };
+		000000000000000000000018 /* MapKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000017 /* MapKit.framework */; };
+		00000000000000000000001A /* CarPlay.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 000000000000000000000019 /* CarPlay.framework */; };
+		00000000000000000000001D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000001C /* Assets.xcassets */; };
+		000000000000000000000020 /* HybridCoachApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000001F /* HybridCoachApp.swift */; };
+		000000000000000000000022 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000021 /* ContentView.swift */; };
+		000000000000000000000024 /* BLEConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000023 /* BLEConstants.swift */; };
+		000000000000000000000026 /* OBDAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000025 /* OBDAdapter.swift */; };
+		000000000000000000000028 /* BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000027 /* BluetoothManager.swift */; };
+		00000000000000000000002A /* ELM327Adapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000029 /* ELM327Adapter.swift */; };
+		00000000000000000000002C /* AutoPhixAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002B /* AutoPhixAdapter.swift */; };
+		00000000000000000000002E /* ProtocolAnalyzerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002D /* ProtocolAnalyzerStore.swift */; };
+		000000000000000000000030 /* ProtocolProber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000002F /* ProtocolProber.swift */; };
+		000000000000000000000032 /* PIDDefinitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000031 /* PIDDefinitions.swift */; };
+		000000000000000000000034 /* OBDResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000033 /* OBDResponse.swift */; };
+		000000000000000000000036 /* OBDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000035 /* OBDService.swift */; };
+		000000000000000000000038 /* DTCModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000037 /* DTCModels.swift */; };
+		00000000000000000000003A /* DTCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000039 /* DTCService.swift */; };
+		00000000000000000000003C /* DrivingDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003B /* DrivingDataStore.swift */; };
+		00000000000000000000003E /* EfficiencyAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003D /* EfficiencyAnalyzer.swift */; };
+		000000000000000000000040 /* TripRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000003F /* TripRecorder.swift */; };
+		000000000000000000000042 /* Trip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000041 /* Trip.swift */; };
+		000000000000000000000044 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000043 /* AppSettings.swift */; };
+		000000000000000000000046 /* TripAggregator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000045 /* TripAggregator.swift */; };
+		000000000000000000000048 /* EVGoalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000047 /* EVGoalStore.swift */; };
+		00000000000000000000004A /* Route.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000049 /* Route.swift */; };
+		00000000000000000000004C /* LocationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004B /* LocationTracker.swift */; };
+		00000000000000000000004E /* RouteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004D /* RouteStore.swift */; };
+		000000000000000000000050 /* RouteCoachingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000004F /* RouteCoachingEngine.swift */; };
+		000000000000000000000052 /* PlannedRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000051 /* PlannedRoute.swift */; };
+		000000000000000000000054 /* PlannedRouteStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000053 /* PlannedRouteStore.swift */; };
+		000000000000000000000056 /* RoutePlanningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000055 /* RoutePlanningService.swift */; };
+		000000000000000000000058 /* TripImprovementAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000057 /* TripImprovementAnalyzer.swift */; };
+		00000000000000000000005A /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000059 /* DashboardView.swift */; };
+		00000000000000000000005C /* GaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000005B /* GaugeView.swift */; };
+		00000000000000000000005E /* EVModeIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000005D /* EVModeIndicator.swift */; };
+		000000000000000000000060 /* MPGDisplayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000005F /* MPGDisplayView.swift */; };
+		000000000000000000000062 /* CoachingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000061 /* CoachingView.swift */; };
+		000000000000000000000064 /* CoachingTipRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000063 /* CoachingTipRow.swift */; };
+		000000000000000000000066 /* ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000065 /* ConnectionView.swift */; };
+		000000000000000000000068 /* DeviceRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000067 /* DeviceRow.swift */; };
+		00000000000000000000006A /* ProtocolAnalyzerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000069 /* ProtocolAnalyzerView.swift */; };
+		00000000000000000000006C /* DTCReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006B /* DTCReaderView.swift */; };
+		00000000000000000000006E /* InteractiveConsoleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006D /* InteractiveConsoleView.swift */; };
+		000000000000000000000070 /* TrafficLogRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000006F /* TrafficLogRow.swift */; };
+		000000000000000000000072 /* TripHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000071 /* TripHistoryView.swift */; };
+		000000000000000000000074 /* TripDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000073 /* TripDetailView.swift */; };
+		000000000000000000000076 /* TripChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000075 /* TripChartView.swift */; };
+		000000000000000000000078 /* LifetimeStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000077 /* LifetimeStatsView.swift */; };
+		00000000000000000000007A /* TripImprovementMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000079 /* TripImprovementMapView.swift */; };
+		00000000000000000000007C /* EVGoalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007B /* EVGoalView.swift */; };
+		00000000000000000000007E /* RouteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007D /* RouteListView.swift */; };
+		000000000000000000000080 /* RouteDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000007F /* RouteDetailView.swift */; };
+		000000000000000000000082 /* RouteMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000081 /* RouteMapView.swift */; };
+		000000000000000000000084 /* RouteComparisonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000083 /* RouteComparisonView.swift */; };
+		000000000000000000000086 /* PlannedRouteEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000085 /* PlannedRouteEntryView.swift */; };
+		000000000000000000000088 /* PlannedRouteAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000087 /* PlannedRouteAnalysisView.swift */; };
+		00000000000000000000008A /* PlannedRouteMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000089 /* PlannedRouteMapView.swift */; };
+		00000000000000000000008C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008B /* SettingsView.swift */; };
+		00000000000000000000008E /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008D /* CarPlaySceneDelegate.swift */; };
+		000000000000000000000090 /* CarPlayDashboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008F /* CarPlayDashboardManager.swift */; };
+		000000000000000000000092 /* Units.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000091 /* Units.swift */; };
+		000000000000000000000094 /* MockOBDAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000093 /* MockOBDAdapter.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000007 /* HybridCoach.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HybridCoach.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000011 /* CoreBluetooth.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreBluetooth.framework; path = System/Library/Frameworks/CoreBluetooth.framework; sourceTree = SDKROOT; };
+		000000000000000000000013 /* Charts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Charts.framework; path = System/Library/Frameworks/Charts.framework; sourceTree = SDKROOT; };
+		000000000000000000000015 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		000000000000000000000017 /* MapKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MapKit.framework; path = System/Library/Frameworks/MapKit.framework; sourceTree = SDKROOT; };
+		000000000000000000000019 /* CarPlay.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CarPlay.framework; path = System/Library/Frameworks/CarPlay.framework; sourceTree = SDKROOT; };
+		00000000000000000000001B /* HybridCoach.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HybridCoach.entitlements; sourceTree = "<group>"; };
+		00000000000000000000001C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		00000000000000000000001E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		00000000000000000000001F /* HybridCoachApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HybridCoachApp.swift; sourceTree = "<group>"; };
+		000000000000000000000021 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		000000000000000000000023 /* BLEConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEConstants.swift; sourceTree = "<group>"; };
+		000000000000000000000025 /* OBDAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OBDAdapter.swift; sourceTree = "<group>"; };
+		000000000000000000000027 /* BluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluetoothManager.swift; sourceTree = "<group>"; };
+		000000000000000000000029 /* ELM327Adapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELM327Adapter.swift; sourceTree = "<group>"; };
+		00000000000000000000002B /* AutoPhixAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoPhixAdapter.swift; sourceTree = "<group>"; };
+		00000000000000000000002D /* ProtocolAnalyzerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolAnalyzerStore.swift; sourceTree = "<group>"; };
+		00000000000000000000002F /* ProtocolProber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolProber.swift; sourceTree = "<group>"; };
+		000000000000000000000031 /* PIDDefinitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PIDDefinitions.swift; sourceTree = "<group>"; };
+		000000000000000000000033 /* OBDResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OBDResponse.swift; sourceTree = "<group>"; };
+		000000000000000000000035 /* OBDService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OBDService.swift; sourceTree = "<group>"; };
+		000000000000000000000037 /* DTCModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTCModels.swift; sourceTree = "<group>"; };
+		000000000000000000000039 /* DTCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTCService.swift; sourceTree = "<group>"; };
+		00000000000000000000003B /* DrivingDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrivingDataStore.swift; sourceTree = "<group>"; };
+		00000000000000000000003D /* EfficiencyAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EfficiencyAnalyzer.swift; sourceTree = "<group>"; };
+		00000000000000000000003F /* TripRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripRecorder.swift; sourceTree = "<group>"; };
+		000000000000000000000041 /* Trip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Trip.swift; sourceTree = "<group>"; };
+		000000000000000000000043 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		000000000000000000000045 /* TripAggregator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripAggregator.swift; sourceTree = "<group>"; };
+		000000000000000000000047 /* EVGoalStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EVGoalStore.swift; sourceTree = "<group>"; };
+		000000000000000000000049 /* Route.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Route.swift; sourceTree = "<group>"; };
+		00000000000000000000004B /* LocationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTracker.swift; sourceTree = "<group>"; };
+		00000000000000000000004D /* RouteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteStore.swift; sourceTree = "<group>"; };
+		00000000000000000000004F /* RouteCoachingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteCoachingEngine.swift; sourceTree = "<group>"; };
+		000000000000000000000051 /* PlannedRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedRoute.swift; sourceTree = "<group>"; };
+		000000000000000000000053 /* PlannedRouteStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedRouteStore.swift; sourceTree = "<group>"; };
+		000000000000000000000055 /* RoutePlanningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoutePlanningService.swift; sourceTree = "<group>"; };
+		000000000000000000000057 /* TripImprovementAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripImprovementAnalyzer.swift; sourceTree = "<group>"; };
+		000000000000000000000059 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		00000000000000000000005B /* GaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaugeView.swift; sourceTree = "<group>"; };
+		00000000000000000000005D /* EVModeIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EVModeIndicator.swift; sourceTree = "<group>"; };
+		00000000000000000000005F /* MPGDisplayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MPGDisplayView.swift; sourceTree = "<group>"; };
+		000000000000000000000061 /* CoachingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachingView.swift; sourceTree = "<group>"; };
+		000000000000000000000063 /* CoachingTipRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachingTipRow.swift; sourceTree = "<group>"; };
+		000000000000000000000065 /* ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionView.swift; sourceTree = "<group>"; };
+		000000000000000000000067 /* DeviceRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRow.swift; sourceTree = "<group>"; };
+		000000000000000000000069 /* ProtocolAnalyzerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolAnalyzerView.swift; sourceTree = "<group>"; };
+		00000000000000000000006B /* DTCReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DTCReaderView.swift; sourceTree = "<group>"; };
+		00000000000000000000006D /* InteractiveConsoleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractiveConsoleView.swift; sourceTree = "<group>"; };
+		00000000000000000000006F /* TrafficLogRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrafficLogRow.swift; sourceTree = "<group>"; };
+		000000000000000000000071 /* TripHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripHistoryView.swift; sourceTree = "<group>"; };
+		000000000000000000000073 /* TripDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailView.swift; sourceTree = "<group>"; };
+		000000000000000000000075 /* TripChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripChartView.swift; sourceTree = "<group>"; };
+		000000000000000000000077 /* LifetimeStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifetimeStatsView.swift; sourceTree = "<group>"; };
+		000000000000000000000079 /* TripImprovementMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripImprovementMapView.swift; sourceTree = "<group>"; };
+		00000000000000000000007B /* EVGoalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EVGoalView.swift; sourceTree = "<group>"; };
+		00000000000000000000007D /* RouteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteListView.swift; sourceTree = "<group>"; };
+		00000000000000000000007F /* RouteDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteDetailView.swift; sourceTree = "<group>"; };
+		000000000000000000000081 /* RouteMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteMapView.swift; sourceTree = "<group>"; };
+		000000000000000000000083 /* RouteComparisonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteComparisonView.swift; sourceTree = "<group>"; };
+		000000000000000000000085 /* PlannedRouteEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedRouteEntryView.swift; sourceTree = "<group>"; };
+		000000000000000000000087 /* PlannedRouteAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedRouteAnalysisView.swift; sourceTree = "<group>"; };
+		000000000000000000000089 /* PlannedRouteMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedRouteMapView.swift; sourceTree = "<group>"; };
+		00000000000000000000008B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		00000000000000000000008D /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
+		00000000000000000000008F /* CarPlayDashboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlayDashboardManager.swift; sourceTree = "<group>"; };
+		000000000000000000000091 /* Units.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Units.swift; sourceTree = "<group>"; };
+		000000000000000000000093 /* MockOBDAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockOBDAdapter.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000009 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000012 /* CoreBluetooth.framework in Frameworks */,
+				000000000000000000000014 /* Charts.framework in Frameworks */,
+				000000000000000000000016 /* CoreLocation.framework in Frameworks */,
+				000000000000000000000018 /* MapKit.framework in Frameworks */,
+				00000000000000000000001A /* CarPlay.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000003 /* HybridCoach */,
+				000000000000000000000004 /* Products */,
+				000000000000000000000005 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000003 /* HybridCoach */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000095 /* App */,
+				000000000000000000000096 /* BLE */,
+				000000000000000000000097 /* CarPlay */,
+				000000000000000000000098 /* Data */,
+				000000000000000000000099 /* OBD */,
+				00000000000000000000009A /* Preview Content */,
+				00000000000000000000009B /* Utilities */,
+				00000000000000000000009C /* Views */,
+				00000000000000000000001C /* Assets.xcassets */,
+				00000000000000000000001E /* Info.plist */,
+				00000000000000000000001B /* HybridCoach.entitlements */,
+			);
+			path = HybridCoach;
+			sourceTree = "<group>";
+		};
+		000000000000000000000004 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000007 /* HybridCoach.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		000000000000000000000005 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000011 /* CoreBluetooth.framework */,
+				000000000000000000000013 /* Charts.framework */,
+				000000000000000000000015 /* CoreLocation.framework */,
+				000000000000000000000017 /* MapKit.framework */,
+				000000000000000000000019 /* CarPlay.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		000000000000000000000095 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000001F /* HybridCoachApp.swift */,
+				000000000000000000000021 /* ContentView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		000000000000000000000096 /* BLE */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000023 /* BLEConstants.swift */,
+				000000000000000000000025 /* OBDAdapter.swift */,
+				000000000000000000000027 /* BluetoothManager.swift */,
+				000000000000000000000029 /* ELM327Adapter.swift */,
+				00000000000000000000002B /* AutoPhixAdapter.swift */,
+				00000000000000000000002D /* ProtocolAnalyzerStore.swift */,
+				00000000000000000000002F /* ProtocolProber.swift */,
+			);
+			path = BLE;
+			sourceTree = "<group>";
+		};
+		000000000000000000000097 /* CarPlay */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000008D /* CarPlaySceneDelegate.swift */,
+				00000000000000000000008F /* CarPlayDashboardManager.swift */,
+			);
+			path = CarPlay;
+			sourceTree = "<group>";
+		};
+		000000000000000000000098 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000003B /* DrivingDataStore.swift */,
+				00000000000000000000003D /* EfficiencyAnalyzer.swift */,
+				00000000000000000000003F /* TripRecorder.swift */,
+				000000000000000000000041 /* Trip.swift */,
+				000000000000000000000043 /* AppSettings.swift */,
+				000000000000000000000045 /* TripAggregator.swift */,
+				000000000000000000000047 /* EVGoalStore.swift */,
+				000000000000000000000049 /* Route.swift */,
+				00000000000000000000004B /* LocationTracker.swift */,
+				00000000000000000000004D /* RouteStore.swift */,
+				00000000000000000000004F /* RouteCoachingEngine.swift */,
+				000000000000000000000051 /* PlannedRoute.swift */,
+				000000000000000000000053 /* PlannedRouteStore.swift */,
+				000000000000000000000055 /* RoutePlanningService.swift */,
+				000000000000000000000057 /* TripImprovementAnalyzer.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		000000000000000000000099 /* OBD */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000031 /* PIDDefinitions.swift */,
+				000000000000000000000033 /* OBDResponse.swift */,
+				000000000000000000000035 /* OBDService.swift */,
+				000000000000000000000037 /* DTCModels.swift */,
+				000000000000000000000039 /* DTCService.swift */,
+			);
+			path = OBD;
+			sourceTree = "<group>";
+		};
+		00000000000000000000009A /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000093 /* MockOBDAdapter.swift */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		00000000000000000000009B /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000091 /* Units.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		00000000000000000000009C /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000009D /* Coaching */,
+				00000000000000000000009E /* Connection */,
+				00000000000000000000009F /* Dashboard */,
+				0000000000000000000000A0 /* Goals */,
+				0000000000000000000000A1 /* Routes */,
+				0000000000000000000000A2 /* Settings */,
+				0000000000000000000000A3 /* Trips */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		00000000000000000000009D /* Coaching */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000061 /* CoachingView.swift */,
+				000000000000000000000063 /* CoachingTipRow.swift */,
+			);
+			path = Coaching;
+			sourceTree = "<group>";
+		};
+		00000000000000000000009E /* Connection */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000065 /* ConnectionView.swift */,
+				000000000000000000000067 /* DeviceRow.swift */,
+				000000000000000000000069 /* ProtocolAnalyzerView.swift */,
+				00000000000000000000006B /* DTCReaderView.swift */,
+				00000000000000000000006D /* InteractiveConsoleView.swift */,
+				00000000000000000000006F /* TrafficLogRow.swift */,
+			);
+			path = Connection;
+			sourceTree = "<group>";
+		};
+		00000000000000000000009F /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000059 /* DashboardView.swift */,
+				00000000000000000000005B /* GaugeView.swift */,
+				00000000000000000000005D /* EVModeIndicator.swift */,
+				00000000000000000000005F /* MPGDisplayView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		0000000000000000000000A0 /* Goals */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000007B /* EVGoalView.swift */,
+			);
+			path = Goals;
+			sourceTree = "<group>";
+		};
+		0000000000000000000000A1 /* Routes */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000007D /* RouteListView.swift */,
+				00000000000000000000007F /* RouteDetailView.swift */,
+				000000000000000000000081 /* RouteMapView.swift */,
+				000000000000000000000083 /* RouteComparisonView.swift */,
+				000000000000000000000085 /* PlannedRouteEntryView.swift */,
+				000000000000000000000087 /* PlannedRouteAnalysisView.swift */,
+				000000000000000000000089 /* PlannedRouteMapView.swift */,
+			);
+			path = Routes;
+			sourceTree = "<group>";
+		};
+		0000000000000000000000A2 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000008B /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		0000000000000000000000A3 /* Trips */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000071 /* TripHistoryView.swift */,
+				000000000000000000000073 /* TripDetailView.swift */,
+				000000000000000000000075 /* TripChartView.swift */,
+				000000000000000000000077 /* LifetimeStatsView.swift */,
+				000000000000000000000079 /* TripImprovementMapView.swift */,
+			);
+			path = Trips;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000006 /* HybridCoach */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 00000000000000000000000E /* Build configuration list for PBXNativeTarget "HybridCoach" */;
+			buildPhases = (
+				000000000000000000000008 /* Sources */,
+				000000000000000000000009 /* Frameworks */,
+				00000000000000000000000A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HybridCoach;
+			productName = HybridCoach;
+			productReference = 000000000000000000000007 /* HybridCoach.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					000000000000000000000006 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 00000000000000000000000B /* Build configuration list for PBXProject "HybridCoach" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000002;
+			productRefGroup = 000000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000006 /* HybridCoach */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		00000000000000000000000A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				00000000000000000000001D /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000008 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000020 /* HybridCoachApp.swift in Sources */,
+				000000000000000000000022 /* ContentView.swift in Sources */,
+				000000000000000000000024 /* BLEConstants.swift in Sources */,
+				000000000000000000000026 /* OBDAdapter.swift in Sources */,
+				000000000000000000000028 /* BluetoothManager.swift in Sources */,
+				00000000000000000000002A /* ELM327Adapter.swift in Sources */,
+				00000000000000000000002C /* AutoPhixAdapter.swift in Sources */,
+				00000000000000000000002E /* ProtocolAnalyzerStore.swift in Sources */,
+				000000000000000000000030 /* ProtocolProber.swift in Sources */,
+				000000000000000000000032 /* PIDDefinitions.swift in Sources */,
+				000000000000000000000034 /* OBDResponse.swift in Sources */,
+				000000000000000000000036 /* OBDService.swift in Sources */,
+				000000000000000000000038 /* DTCModels.swift in Sources */,
+				00000000000000000000003A /* DTCService.swift in Sources */,
+				00000000000000000000003C /* DrivingDataStore.swift in Sources */,
+				00000000000000000000003E /* EfficiencyAnalyzer.swift in Sources */,
+				000000000000000000000040 /* TripRecorder.swift in Sources */,
+				000000000000000000000042 /* Trip.swift in Sources */,
+				000000000000000000000044 /* AppSettings.swift in Sources */,
+				000000000000000000000046 /* TripAggregator.swift in Sources */,
+				000000000000000000000048 /* EVGoalStore.swift in Sources */,
+				00000000000000000000004A /* Route.swift in Sources */,
+				00000000000000000000004C /* LocationTracker.swift in Sources */,
+				00000000000000000000004E /* RouteStore.swift in Sources */,
+				000000000000000000000050 /* RouteCoachingEngine.swift in Sources */,
+				000000000000000000000052 /* PlannedRoute.swift in Sources */,
+				000000000000000000000054 /* PlannedRouteStore.swift in Sources */,
+				000000000000000000000056 /* RoutePlanningService.swift in Sources */,
+				000000000000000000000058 /* TripImprovementAnalyzer.swift in Sources */,
+				00000000000000000000005A /* DashboardView.swift in Sources */,
+				00000000000000000000005C /* GaugeView.swift in Sources */,
+				00000000000000000000005E /* EVModeIndicator.swift in Sources */,
+				000000000000000000000060 /* MPGDisplayView.swift in Sources */,
+				000000000000000000000062 /* CoachingView.swift in Sources */,
+				000000000000000000000064 /* CoachingTipRow.swift in Sources */,
+				000000000000000000000066 /* ConnectionView.swift in Sources */,
+				000000000000000000000068 /* DeviceRow.swift in Sources */,
+				00000000000000000000006A /* ProtocolAnalyzerView.swift in Sources */,
+				00000000000000000000006C /* DTCReaderView.swift in Sources */,
+				00000000000000000000006E /* InteractiveConsoleView.swift in Sources */,
+				000000000000000000000070 /* TrafficLogRow.swift in Sources */,
+				000000000000000000000072 /* TripHistoryView.swift in Sources */,
+				000000000000000000000074 /* TripDetailView.swift in Sources */,
+				000000000000000000000076 /* TripChartView.swift in Sources */,
+				000000000000000000000078 /* LifetimeStatsView.swift in Sources */,
+				00000000000000000000007A /* TripImprovementMapView.swift in Sources */,
+				00000000000000000000007C /* EVGoalView.swift in Sources */,
+				00000000000000000000007E /* RouteListView.swift in Sources */,
+				000000000000000000000080 /* RouteDetailView.swift in Sources */,
+				000000000000000000000082 /* RouteMapView.swift in Sources */,
+				000000000000000000000084 /* RouteComparisonView.swift in Sources */,
+				000000000000000000000086 /* PlannedRouteEntryView.swift in Sources */,
+				000000000000000000000088 /* PlannedRouteAnalysisView.swift in Sources */,
+				00000000000000000000008A /* PlannedRouteMapView.swift in Sources */,
+				00000000000000000000008C /* SettingsView.swift in Sources */,
+				00000000000000000000008E /* CarPlaySceneDelegate.swift in Sources */,
+				000000000000000000000090 /* CarPlayDashboardManager.swift in Sources */,
+				000000000000000000000092 /* Units.swift in Sources */,
+				000000000000000000000094 /* MockOBDAdapter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		00000000000000000000000C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		00000000000000000000000D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		00000000000000000000000F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = HybridCoach/HybridCoach.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "HybridCoach/Preview\\ Content";
+				DEVELOPMENT_TEAM = RV3V5935AF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HybridCoach/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HybridCoach;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hybridcoach.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000000000010 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = HybridCoach/HybridCoach.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "HybridCoach/Preview\\ Content";
+				DEVELOPMENT_TEAM = RV3V5935AF;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HybridCoach/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HybridCoach;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = NO;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.hybridcoach.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		00000000000000000000000B /* Build configuration list for PBXProject "HybridCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000C /* Debug */,
+				00000000000000000000000D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		00000000000000000000000E /* Build configuration list for PBXNativeTarget "HybridCoach" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				00000000000000000000000F /* Debug */,
+				000000000000000000000010 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}
