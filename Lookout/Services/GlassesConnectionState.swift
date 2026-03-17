@@ -50,7 +50,12 @@ class GlassesService: ObservableObject {
 
     // MARK: - Private — SDK objects
     #if canImport(MWDATCore)
-    private let wearables = Wearables.shared
+    // Use lazy to avoid triggering MWDATCore's BackgroundThread initialization
+    // during GlassesService.init(), which causes a priority inversion when the
+    // main (User-Initiated QoS) thread waits on the Default QoS dispatch_once.
+    // The first access is deferred to connect() which warms up the SDK on a
+    // background thread first.
+    private lazy var wearables = Wearables.shared
     private var streamSession: StreamSession?
     private var deviceSelector: AutoDeviceSelector?
 
@@ -184,6 +189,26 @@ class GlassesService: ObservableObject {
         deviceStreamTask?.cancel()
         connectionTimeoutTask?.cancel()
 
+        // Defer SDK work to the next run-loop turn so the SettingsView sheet
+        // animation completes before we touch MWDATCore. The priority inversion
+        // (User-Initiated main thread waiting on Default QoS BackgroundThread)
+        // is inside the SDK, but yielding here keeps the UI responsive.
+        Task { @MainActor [weak self] in
+            // Yield once so SwiftUI finishes presenting the sheet / updating
+            // the view hierarchy before we touch the SDK.
+            await Task.yield()
+            self?.continueConnect()
+        }
+        #else
+        connectionState = .error
+        lastError = "Meta Wearables SDK not available"
+        #endif
+    }
+
+    #if canImport(MWDATCore)
+    /// Continues the connection flow after the SDK singleton has been warmed up
+    /// on a background thread. This runs back on @MainActor.
+    private func continueConnect() {
         // Listen on the registration stream for async state changes.
         // The SDK often flickers through states on startup (0→2→3→0→1),
         // so we track whether we've ever hit .registered and react accordingly.
@@ -299,13 +324,8 @@ class GlassesService: ObservableObject {
                 }
             }
         }
-        #else
-        connectionState = .error
-        lastError = "Meta Wearables SDK not available"
-        #endif
     }
 
-    #if canImport(MWDATCore)
     /// Installs a persistent UIApplication.didBecomeActiveNotification observer
     /// that checks registration state every time the app becomes active.
     /// This catches the post-OAuth redirect AND handles cases where the SDK

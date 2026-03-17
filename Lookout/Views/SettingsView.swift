@@ -110,7 +110,7 @@ struct SettingsView: View {
             Text("Trigger Phrase")
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.white.opacity(0.5))
-            TextField("lookout", text: $settings.glassesTriggerPhrase)
+            TextField("hey lookout", text: $settings.glassesTriggerPhrase)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .font(.system(.body, design: .monospaced))

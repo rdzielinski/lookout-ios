@@ -1,0 +1,29 @@
+{
+  "activityEntities" : [
+    "projectCreated",
+    [
+      {
+        "createdDate" : "2026-03-17T19:02:29Z",
+        "event" : "projectCreated",
+        "id" : "3AA9DFD6-836E-4D32-8D4C-2BF67100D876",
+        "subtitle" : "LookoutClassifier ",
+        "title" : "Project Created"
+      }
+    ]
+  ],
+  "authorName" : "Robby Dzielinski",
+  "createdDate" : "2026-03-17T19:02:29Z",
+  "description" : "",
+  "id" : "6F4112A8-2C85-4130-8C8F-CB101B291BD4",
+  "license" : "",
+  "location" : "",
+  "modifiedDate" : "2026-03-17T19:02:29Z",
+  "projectName" : "LookoutClassifier ",
+  "settingsEntity" : {
+    "snapshotOnExtendTraining" : true,
+    "snapshotOnResumeTraining" : false
+  },
+  "taskType" : "imageClassifier",
+  "title" : "Image Classification",
+  "version" : "1.1"
+}

@@ -5,17 +5,17 @@
 //  Created by Robby Dzielinski on 2/18/26.
 //
 
-
 import Foundation
 import Vision
 import UIKit
 import CoreML
 import NaturalLanguage
 
-// MARK: - Offline Vision Service
-/// Uses Apple's on-device Vision framework for basic classification when offline.
-/// Supports: object classification, text recognition (OCR), barcode detection, animal detection.
-/// Falls back gracefully when AI providers are unreachable.
+// MARK: - Offline Vision Service (Updated with Custom Classifier)
+/// Uses Apple's on-device Vision framework for classification when offline.
+/// Now prioritizes a custom Create ML model (LookoutClassifier) for category
+/// prediction, falling back to generic VNClassifyImageRequest if the custom
+/// model isn't available.
 class OfflineVisionService {
     
     // MARK: - Offline Result
@@ -48,53 +48,80 @@ class OfflineVisionService {
         }
     }
     
+    // MARK: - Properties
+    
+    /// Custom trained classifier — loaded once, used for every scan
+    private let lookoutClassifier = LookoutClassifierService()
+    
     // MARK: - Analyze Image (Offline)
     
     /// Run all on-device classifiers in parallel and return the best result.
+    /// Custom LookoutClassifier runs alongside existing detectors.
     func analyzeOffline(imageData: Data) async -> OfflineResult? {
         guard let image = UIImage(data: imageData),
               let cgImage = image.cgImage else { return nil }
         
-        // Run all detectors in parallel
-        async let classificationTask = classifyImage(cgImage)
+        // Run ALL detectors in parallel — custom model + existing ones
+        async let customClassification = lookoutClassifier.classify(cgImage)
+        async let genericClassification = classifyImage(cgImage)
         async let textTask = recognizeText(cgImage)
         async let barcodeTask = detectBarcode(cgImage)
         async let animalTask = detectAnimal(cgImage)
         
-        let classification = await classificationTask
+        let custom = await customClassification
+        let generic = await genericClassification
         let text = await textTask
         let barcode = await barcodeTask
         let animal = await animalTask
         
-        // Priority: barcode > text (if substantial) > animal > general classification
-        if let barcode {
-            return barcode
-        }
-        
-        if let text, text.confidence > 0.7 {
-            return text
-        }
-        
-        if let animal, animal.confidence > 0.5 {
-            return animal
-        }
-        
-        if let classification, classification.confidence > 0.3 {
-            return classification
-        }
-        
-        // If we got some text but low confidence, still return it
-        if let text {
-            return text
-        }
-        
-        return classification
+        // Priority:
+        // 1. Barcode (always definitive)
+        // 2. Custom classifier with high confidence (>0.7)
+        // 3. Text (if substantial)
+        // 4. Animal detector
+        // 5. Custom classifier with medium confidence (>0.4)
+        // 6. Generic classifier
+        if let barcode { return barcode }
+        if let custom, custom.confidence > 0.7 { return buildResult(from: custom) }
+        if let text, text.confidence > 0.7 { return text }
+        if let animal, animal.confidence > 0.5 { return animal }
+        if let custom, custom.confidence > 0.4 { return buildResult(from: custom) }
+        if let generic, generic.confidence > 0.3 { return generic }
+        if let text { return text }
+        return generic
     }
     
-    // MARK: - Image Classification (VNClassifyImageRequest)
+    // MARK: - Build Result from Custom Classification
+    
+    private func buildResult(from classification: LookoutClassifierService.Classification) -> OfflineResult {
+        let topPredictions = classification.allPredictions
+            .prefix(3)
+            .map { "\($0.category.displayName) (\(Int($0.confidence * 100))%)" }
+            .joined(separator: ", ")
+        
+        let details: [SkillResult.DetailItem] = [
+            .init(label: "Category", value: classification.category.displayName, iconName: classification.category.iconName),
+            .init(label: "Confidence", value: "\(Int(classification.confidence * 100))%", iconName: "chart.bar"),
+            .init(label: "Inference", value: "\(Int(classification.inferenceTimeMs))ms", iconName: "bolt"),
+            .init(label: "Top Matches", value: topPredictions, iconName: "list.bullet"),
+            .init(label: "Mode", value: "Offline (Custom ML)", iconName: "cpu")
+        ]
+        
+        return OfflineResult(
+            title: classification.category.displayName,
+            category: classification.category,
+            description: "On-device Lookout classifier: \(classification.category.displayName) (\(Int(classification.confidence * 100))% confidence)",
+            confidence: classification.confidence,
+            details: details,
+            source: "Lookout ML (Offline)"
+        )
+    }
+    
+    // MARK: - Generic Image Classification (VNClassifyImageRequest)
     
     private func classifyImage(_ cgImage: CGImage) async -> OfflineResult? {
-        await withCheckedContinuation { (continuation: CheckedContinuation<OfflineResult?, Never>) in            let request = VNClassifyImageRequest { request, error in
+        await withCheckedContinuation { (continuation: CheckedContinuation<OfflineResult?, Never>) in
+            let request = VNClassifyImageRequest { request, error in
                 guard error == nil,
                       let results = request.results as? [VNClassificationObservation],
                       let top = results.first,
@@ -103,7 +130,7 @@ class OfflineVisionService {
                     return
                 }
                 
-                // Get top 3 classifications for context
+                // Get top 3–5 classifications for context
                 let topResults: [VNClassificationObservation] = Array(results.prefix(5).filter { $0.confidence > 0.1 })
                 let descriptions = topResults.map { "\($0.identifier) (\(Int($0.confidence * 100))%)" }
                 
@@ -111,10 +138,10 @@ class OfflineVisionService {
                 let category = self.mapToCategory(identifier: top.identifier, allResults: topResults)
                 let cleanName = self.cleanIdentifier(top.identifier)
                 
-                var details: [SkillResult.DetailItem] = [
+                let details: [SkillResult.DetailItem] = [
                     .init(label: "Confidence", value: "\(Int(top.confidence * 100))%", iconName: "chart.bar"),
                     .init(label: "Top Matches", value: descriptions.joined(separator: ", "), iconName: "list.bullet"),
-                    .init(label: "Mode", value: "Offline (on-device)", iconName: "iphone")
+                    .init(label: "Mode", value: "Offline (Generic Vision)", iconName: "iphone")
                 ]
                 
                 continuation.resume(returning: OfflineResult(
@@ -291,13 +318,17 @@ class OfflineVisionService {
     /// Map Vision classification identifiers to Lookout skill categories.
     private func mapToCategory(identifier: String, allResults: [VNClassificationObservation]) -> SkillCategory {
         let id = identifier.lowercased()
-        let allIds = allResults.map { $0.identifier.lowercased() }
         
         // Vehicle keywords
         let vehicleWords = ["car", "vehicle", "truck", "suv", "sedan", "coupe", "minivan", "bus",
                            "motorcycle", "convertible", "pickup", "jeep", "taxi", "ambulance",
                            "fire_engine", "police_van", "sports_car", "station_wagon"]
         if vehicleWords.contains(where: { id.contains($0) }) { return .vehicle }
+        
+        // Flight/aircraft keywords (extended)
+        let flightWords = ["airplane", "aircraft", "airliner", "jet", "helicopter", "drone",
+                          "warplane", "biplane", "airship"]
+        if flightWords.contains(where: { id.contains($0) }) { return .flight }
         
         // Plant/animal keywords
         let natureWords = ["flower", "plant", "tree", "leaf", "bird", "dog", "cat", "fish",

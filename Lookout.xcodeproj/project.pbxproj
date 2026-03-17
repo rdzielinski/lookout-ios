@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		21300DCF2F69B12200405014 /* LookoutClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21300DCE2F69B12200405014 /* LookoutClassifierService.swift */; };
+		21300DD12F69E45100405014 /* LookoutClassifier.mlproj in Resources */ = {isa = PBXBuildFile; fileRef = 21300DD02F69E45100405014 /* LookoutClassifier.mlproj */; };
 		214F2D9B2F3FDF690063539A /* ConversationMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2D9A2F3FDF690063539A /* ConversationMessage.swift */; };
 		214F2D9D2F3FDF7B0063539A /* VoiceInputService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2D9C2F3FDF7B0063539A /* VoiceInputService.swift */; };
 		214F2D9F2F400A8E0063539A /* HapticService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2D9E2F400A8E0063539A /* HapticService.swift */; };
@@ -64,6 +66,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		21300DCE2F69B12200405014 /* LookoutClassifierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LookoutClassifierService.swift; sourceTree = "<group>"; };
+		21300DD02F69E45100405014 /* LookoutClassifier.mlproj */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = LookoutClassifier.mlproj; sourceTree = "<group>"; };
 		214F2D9A2F3FDF690063539A /* ConversationMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMessage.swift; sourceTree = "<group>"; };
 		214F2D9C2F3FDF7B0063539A /* VoiceInputService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputService.swift; sourceTree = "<group>"; };
 		214F2D9E2F400A8E0063539A /* HapticService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticService.swift; sourceTree = "<group>"; };
@@ -157,6 +161,7 @@
 				D100000006 /* Services */,
 				D100000007 /* Skills */,
 				21B2B8DF2F46883F00EAD15C /* test_glasses_capture.jpg */,
+				21300DD02F69E45100405014 /* LookoutClassifier.mlproj */,
 			);
 			path = Lookout;
 			sourceTree = "<group>";
@@ -199,6 +204,7 @@
 		D100000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				21300DCE2F69B12200405014 /* LookoutClassifierService.swift */,
 				21B2B8E32F46946D00EAD15C /* OfflineVisionService.swift */,
 				21B2B8D92F46221D00EAD15C /* GlassesConnectionState.swift */,
 				214F2DAC2F40126C0063539A /* SmartNarrationService.swift */,
@@ -311,6 +317,7 @@
 			files = (
 				21B2B8E02F46883F00EAD15C /* test_glasses_capture.jpg in Resources */,
 				A100000017 /* Assets.xcassets in Resources */,
+				21300DD12F69E45100405014 /* LookoutClassifier.mlproj in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -357,6 +364,7 @@
 				21B2B8F02F478F3E00EAD15C /* LookoutColor.swift in Sources */,
 				A100000015 /* SettingsView.swift in Sources */,
 				A100000016 /* HistoryView.swift in Sources */,
+				21300DCF2F69B12200405014 /* LookoutClassifierService.swift in Sources */,
 				21B2B8EE2F46A75800EAD15C /* PlaceSignalType.swift in Sources */,
 				A100000018 /* ScanDebugTrace.swift in Sources */,
 				214F2D9F2F400A8E0063539A /* HapticService.swift in Sources */,
