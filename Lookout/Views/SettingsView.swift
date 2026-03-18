@@ -50,7 +50,7 @@ struct SettingsView: View {
                 Text("This will erase all saved faces, places, pets, product memory, and scan history. This cannot be undone.")
             }
             #if DEBUG
-            .sheet(isPresented: $showMockGlasses) { MockGlassesTestView() }
+            .sheet(isPresented: $showMockGlasses) { MockGlassesTestView().environmentObject(settings) }
             #endif
         }
     }

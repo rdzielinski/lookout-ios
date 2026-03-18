@@ -11,7 +11,8 @@ class UserContextStore: ObservableObject {
     private let storageURL: URL
     
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         storageURL = docs.appendingPathComponent("lookout_context.json")
         context = UserContext()
         loadContext()

@@ -183,7 +183,7 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(isPresented: $showSettings) { SettingsView(glassesService: viewModel.glassesService) }
+        .sheet(isPresented: $showSettings) { SettingsView(glassesService: viewModel.glassesService).environmentObject(settings) }
         .sheet(isPresented: $showHistory) { ScanHistoryView(viewModel: viewModel) }
         .sheet(isPresented: $showSavePlace) { savePlaceSheet }
         .sheet(isPresented: $showDebugTrace) { ScanDebugView(trace: viewModel.latestDebugTrace) }

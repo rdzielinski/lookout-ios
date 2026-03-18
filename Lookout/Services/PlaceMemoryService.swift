@@ -12,7 +12,8 @@ class PlaceMemoryService: ObservableObject {
     private let defaultRadius: Double = 100 // meters
     
     init() {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         storageURL = docs.appendingPathComponent("lookout_places.json")
         loadPlaces()
     }
