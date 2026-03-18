@@ -17,7 +17,7 @@
 		214F2DAB2F4012640063539A /* UserContextStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DAA2F4012640063539A /* UserContextStore.swift */; };
 		214F2DAD2F40126C0063539A /* SmartNarrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DAC2F40126C0063539A /* SmartNarrationService.swift */; };
 		214F2DB32F401AA00063539A /* PriceLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB22F401AA00063539A /* PriceLookupService.swift */; };
-		214F2DB52F401D3F0063539A /* FaceMemoryService 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB42F401D3F0063539A /* FaceMemoryService 2.swift */; };
+		214F2DB52F401D3F0063539A /* FaceMemoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB42F401D3F0063539A /* FaceMemoryService.swift */; };
 		214F2DB72F40DF110063539A /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DB62F40DF110063539A /* ContentView.swift */; };
 		214F2DBB2F4164CE0063539A /* PrivacyWelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DBA2F4164CE0063539A /* PrivacyWelcomeView.swift */; };
 		214F2DBD2F4165250063539A /* PrivacyDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 214F2DBC2F4165250063539A /* PrivacyDetailView.swift */; };
@@ -74,7 +74,7 @@
 		214F2DAA2F4012640063539A /* UserContextStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserContextStore.swift; sourceTree = "<group>"; };
 		214F2DAC2F40126C0063539A /* SmartNarrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNarrationService.swift; sourceTree = "<group>"; };
 		214F2DB22F401AA00063539A /* PriceLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PriceLookupService.swift; sourceTree = "<group>"; };
-		214F2DB42F401D3F0063539A /* FaceMemoryService 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceMemoryService 2.swift"; sourceTree = "<group>"; };
+		214F2DB42F401D3F0063539A /* FaceMemoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FaceMemoryService.swift"; sourceTree = "<group>"; };
 		214F2DB62F40DF110063539A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		214F2DBA2F4164CE0063539A /* PrivacyWelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyWelcomeView.swift; sourceTree = "<group>"; };
 		214F2DBC2F4165250063539A /* PrivacyDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyDetailView.swift; sourceTree = "<group>"; };
@@ -205,7 +205,7 @@
 				214F2DAA2F4012640063539A /* UserContextStore.swift */,
 				214F2DA82F4012590063539A /* PlaceMemoryService.swift */,
 				214F2D9E2F400A8E0063539A /* HapticService.swift */,
-				214F2DB42F401D3F0063539A /* FaceMemoryService 2.swift */,
+				214F2DB42F401D3F0063539A /* FaceMemoryService.swift */,
 				214F2D9C2F3FDF7B0063539A /* VoiceInputService.swift */,
 				214F2D9A2F3FDF690063539A /* ConversationMessage.swift */,
 				B100000005 /* AIVisionService.swift */,
@@ -329,7 +329,7 @@
 				A100000006 /* FlightSkill.swift in Sources */,
 				21B2B8E22F46946500EAD15C /* ScanHistoryView.swift in Sources */,
 				214F2D9B2F3FDF690063539A /* ConversationMessage.swift in Sources */,
-				214F2DB52F401D3F0063539A /* FaceMemoryService 2.swift in Sources */,
+				214F2DB52F401D3F0063539A /* FaceMemoryService.swift in Sources */,
 				214F2D9D2F3FDF7B0063539A /* VoiceInputService.swift in Sources */,
 				21B2B8E42F46946D00EAD15C /* OfflineVisionService.swift in Sources */,
 				21B2B8DE2F464E3A00EAD15C /* MockGlassesTestView.swift in Sources */,
