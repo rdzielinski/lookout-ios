@@ -8,7 +8,9 @@ import CoreImage
 // This runs BEFORE the AI API call, allowing the skill to start fetching in parallel
 
 class PreScanRouter {
-    
+
+    private let lookoutClassifier = LookoutClassifierService()
+
     // MARK: - PreScan Result
     struct PreScanResult {
         let predictedCategory: SkillCategory
@@ -28,19 +30,21 @@ class PreScanRouter {
         
         let startTime = CFAbsoluteTimeGetCurrent()
         
-        // Run all Vision requests in parallel
+        // Run all detectors in parallel (custom classifier + Vision requests)
+        async let customTask = lookoutClassifier.classify(cgImage)
         async let classifyTask = classifyImage(cgImage)
         async let textTask = recognizeText(cgImage)
         async let barcodeTask = detectBarcodes(cgImage)
         async let animalTask = detectAnimals(cgImage)
-        
+
+        let customResult = await customTask
         let classifications = await classifyTask
         let texts = await textTask
         let barcode = await barcodeTask
         let animalResults = await animalTask
-        
+
         let duration = CFAbsoluteTimeGetCurrent() - startTime
-        
+
         // If barcode found — distinguish QR codes from product barcodes
         if let barcode = barcode {
             // QR codes that look like URLs, WiFi configs, or vCards route to QR skill
@@ -61,7 +65,21 @@ class PreScanRouter {
             )
         }
         
-        // Determine category from Vision classifications + context
+        // Prefer custom Lookout classifier — direct SkillCategory output, sub-1ms
+        if let custom = customResult, custom.confidence > 0.6 {
+            return PreScanResult(
+                predictedCategory: custom.category,
+                confidence: custom.confidence,
+                query: custom.category.displayName,
+                detectedText: texts,
+                detectedBarcode: nil,
+                isAnimal: !animalResults.isEmpty,
+                topClassifications: classifications.map { $0.label },
+                duration: duration
+            )
+        }
+
+        // Fallback: determine category from generic Vision classifications + context
         let prediction = predictCategory(
             classifications: classifications,
             texts: texts,

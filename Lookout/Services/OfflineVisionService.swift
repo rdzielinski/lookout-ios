@@ -17,7 +17,9 @@ import NaturalLanguage
 /// Supports: object classification, text recognition (OCR), barcode detection, animal detection.
 /// Falls back gracefully when AI providers are unreachable.
 class OfflineVisionService {
-    
+
+    private let lookoutClassifier = LookoutClassifierService()
+
     // MARK: - Offline Result
     struct OfflineResult {
         let title: String
@@ -54,7 +56,28 @@ class OfflineVisionService {
     func analyzeOffline(imageData: Data) async -> OfflineResult? {
         guard let image = UIImage(data: imageData),
               let cgImage = image.cgImage else { return nil }
-        
+
+        // Try custom Lookout classifier first — direct SkillCategory output, sub-1ms
+        if let custom = await lookoutClassifier.classify(cgImage), custom.confidence > 0.5 {
+            let topPredictions = custom.allPredictions
+                .prefix(3)
+                .map { "\($0.category.rawValue) (\(Int($0.confidence * 100))%)" }
+                .joined(separator: ", ")
+
+            return OfflineResult(
+                title: custom.category.displayName,
+                category: custom.category,
+                description: "On-device classification: \(custom.category.displayName) (\(Int(custom.confidence * 100))% confidence)",
+                confidence: custom.confidence,
+                details: [
+                    .init(label: "Confidence", value: "\(Int(custom.confidence * 100))%", iconName: "chart.bar"),
+                    .init(label: "Top Matches", value: topPredictions, iconName: "list.bullet"),
+                    .init(label: "Mode", value: "Offline (on-device)", iconName: "iphone")
+                ],
+                source: "Lookout ML (Offline)"
+            )
+        }
+
         // Run all detectors in parallel
         async let classificationTask = classifyImage(cgImage)
         async let textTask = recognizeText(cgImage)
