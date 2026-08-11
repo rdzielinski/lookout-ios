@@ -322,23 +322,27 @@ class LookoutViewModel: ObservableObject {
         glassesService.startVoiceTriggerListening()
     }
 
-    /// True when the assistant's own wake-word detector is listening on the
-    /// phone mic.
+    /// True when the assistant is the app's front door, and therefore owns the
+    /// microphone.
     ///
-    /// Lookout's trigger listener and the assistant's wake-word detector are two
-    /// `SFSpeechRecognizer` sessions reading the same input. Run both and each
-    /// one's recognition ends immediately with "No speech detected", so each
-    /// restarts, so the other's ends — a restart storm that never settles and
-    /// never yields a transcript. Only one of them can own the phone mic, and
-    /// once the assistant is the front door, it's the assistant: its intent
-    /// router already sends "what's this?" down the same capture pipeline the
-    /// trigger phrase used to.
+    /// Lookout's trigger listener and the assistant are separate
+    /// `SFSpeechRecognizer` consumers of one input node. Running both means each
+    /// one's recognition ends immediately with "No speech detected" and
+    /// restarts, forever, and the trigger grabs the mic back between assistant
+    /// turns.
+    ///
+    /// Note this keys off `assistantEnabled` alone, not the wake word. The wake
+    /// word is off by default, so gating on it left the "lookout" listener
+    /// running its restart loop for exactly the users who never asked for it —
+    /// a second, undiscoverable voice path competing with the orb. Whenever the
+    /// assistant is on, it is the only thing listening; its intent router
+    /// already sends "what's this?" down the same capture pipeline the trigger
+    /// phrase used to.
     ///
     /// This holds in glasses mode too. The glasses route the mic over Bluetooth
     /// HFP, but it's still a single input node, so the contention is the same.
     private var assistantOwnsThePhoneMic: Bool {
-        guard let settings else { return false }
-        return settings.assistantEnabled && settings.wakeWordEnabled
+        settings?.assistantEnabled ?? false
     }
     
     /// Process a photo captured from the glasses — runs the same pipeline as the phone camera.

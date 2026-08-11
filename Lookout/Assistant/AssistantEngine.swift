@@ -372,28 +372,28 @@ final class AssistantEngine: ObservableObject {
 
         try Task.checkCancellation()
 
-        // A bare "what is this" is best answered by the skill card itself: it's
-        // already a clean sentence, it's grounded in real API data, and it comes
-        // back with no extra round trip. Anything more specific than that
-        // deserves a real answer, so hand the frame to the brain.
-        if Self.isBareIdentification(question) || !brain.isUsable {
-            await speakStreaming(single: outcome.spokenSummary, sawSomething: true)
-        } else {
+        // The brain answers every vision turn it can, even a bare "what is
+        // this". Speaking the skill card directly saved a round trip, but it
+        // cost two things that matter more:
+        //
+        //   1. Continuity. The skill card never reaches the brain, so the
+        //      server-side session has no record of the turn. Ask "repeat what
+        //      you just said" afterwards and it repeats whatever it last said
+        //      *itself* — two questions ago.
+        //   2. Accuracy. The skill card is whatever the on-device pre-scan
+        //      routed to, and it's confidently wrong when that routing misses:
+        //      a cat pre-scanned as "plant" comes back from iNaturalist as
+        //      Lepidoptera. The AI vision description runs in parallel and is
+        //      usually right — `VisionContext` carries both, so let the brain
+        //      reconcile them instead of reading out the loser.
+        //
+        // The skill card stays as the fallback for offline and no-brain, where
+        // there's no session to keep coherent anyway.
+        if brain.isUsable {
             try await answerWithBrain(question: question, visionContext: outcome.context, sawSomething: true)
+        } else {
+            await speakStreaming(single: outcome.spokenSummary, sawSomething: true)
         }
-    }
-
-    /// True for "what is this"-shaped questions with nothing else attached.
-    private static func isBareIdentification(_ question: String) -> Bool {
-        let normalized = question.lowercased()
-            .trimmingCharacters(in: CharacterSet(charactersIn: " ?.!,"))
-        let bare: Set<String> = [
-            "what is this", "what's this", "what is that", "what's that",
-            "what am i looking at", "what do you see", "what am i seeing",
-            "identify this", "identify that", "scan this", "scan that",
-            "look at this", "look at that", "take a look", "what is it",
-        ]
-        return bare.contains(normalized)
     }
 
     // MARK: - Brain Path

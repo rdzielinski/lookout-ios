@@ -75,14 +75,28 @@ class BackgroundKeepAliveService: NSObject {
 
     // MARK: - Central Update
 
+    /// Tracks whether we're actually backgrounded. The silent loop is only
+    /// justified there.
+    private var isBackgrounded = false
+
     private func updateKeepAlive() {
         if isAnyFeatureActive {
             enableIdleTimerPrevention()
-            startSilentAudioSession()
         } else {
             disableIdleTimerPrevention()
-            stopSilentAudioSession()
             endBackgroundTaskIfNeeded()
+        }
+
+        // The silent loop exists to stop iOS suspending us in the *background*.
+        // In the foreground it buys nothing and costs plenty: it holds an audio
+        // session for the whole run, and every underflow of that loop lands in
+        // the middle of whatever the assistant is saying — the stuttering,
+        // glitching voice. Enabling proactive narration used to start it at
+        // launch and never stop it.
+        if isAnyFeatureActive && isBackgrounded {
+            startSilentAudioSession()
+        } else {
+            stopSilentAudioSession()
         }
     }
 
@@ -203,12 +217,14 @@ class BackgroundKeepAliveService: NSObject {
     // MARK: - Strategy 3: Background Task Extension
 
     @objc private func appDidEnterBackground() {
+        isBackgrounded = true
         guard isAnyFeatureActive else { return }
 
         // Request extended background execution time
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "LookoutKeepAlive") { [weak self] in
             self?.endBackgroundTaskIfNeeded()
         }
+        updateKeepAlive()
 
         #if DEBUG
         print("🔋 Background task started (remaining: \(UIApplication.shared.backgroundTimeRemaining)s)")
@@ -216,7 +232,10 @@ class BackgroundKeepAliveService: NSObject {
     }
 
     @objc private func appWillEnterForeground() {
+        isBackgrounded = false
         endBackgroundTaskIfNeeded()
+        // Hand the audio session back before the user says anything.
+        updateKeepAlive()
     }
 
     @objc private func appWillTerminate() {

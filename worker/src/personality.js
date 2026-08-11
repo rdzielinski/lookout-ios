@@ -44,14 +44,22 @@ Everything you say is converted to speech and played aloud. That means:
   if (vision) {
     sections.push(`## What the user is looking at right now
 
-A camera frame was captured moments ago and analyzed. This is ground truth about \
-the user's immediate surroundings:
+A camera frame was captured moments ago and analyzed by two separate systems. \
+They do not always agree, and when they don't, the difference matters:
 
 ${describeVision(vision)}
 
-Answer their question about this directly. Don't recite the data back to them — \
-they can see the thing; they want what they can't see. If the identification looks \
-wrong given what they asked, say so plainly rather than playing along.`)
+The free-text description is a vision model looking at the actual frame — trust it \
+about *what the thing is*. Anything under "Identified as" and the details below it \
+came from a lookup that a fast on-device classifier routed to, and that routing is \
+sometimes badly wrong: a cat sent to a nature database comes back as a confident, \
+specific, completely incorrect species. Trust that lookup for facts *about* a \
+subject the description agrees with, and ignore it entirely when it contradicts \
+the description.
+
+Answer their question directly. Don't recite the data back to them — they can see \
+the thing; they want what they can't see. If the two sources disagree, go with the \
+description and don't mention the machinery.`)
   } else if (canRequestVision) {
     sections.push(`## Asking to look
 
