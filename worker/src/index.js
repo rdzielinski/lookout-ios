@@ -77,13 +77,19 @@ export default {
 // MARK: - Auth
 
 function requireAuth(request, env) {
-  const expected = env.JARVIS_API_TOKEN
+  // Trimmed: a secret set by pasting into a prompt, or piped in from a file or
+  // `echo`, easily carries a trailing newline. Comparing untrimmed makes that a
+  // 401 with nothing to distinguish it from a genuinely wrong token — which
+  // costs far more debugging time than the whitespace is worth defending.
+  // Bearer tokens have no meaningful leading or trailing whitespace.
+  const expected = (env.JARVIS_API_TOKEN || '').trim()
+
   // Fail closed. An unset token must not mean "open to the internet" — this
   // endpoint spends the owner's Claude credits.
   if (!expected) return json({ error: 'Server missing JARVIS_API_TOKEN' }, 500)
 
   const header = request.headers.get('Authorization') || ''
-  const provided = header.startsWith('Bearer ') ? header.slice(7) : ''
+  const provided = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
 
   if (!timingSafeEqual(provided, expected)) {
     return json({ error: 'Unauthorized' }, 401)
