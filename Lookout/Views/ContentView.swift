@@ -4,7 +4,10 @@ import AVFoundation
 
 struct ContentView: View {
     @EnvironmentObject var settings: SettingsManager
-    @StateObject private var viewModel = LookoutViewModel()
+    /// Injected rather than owned. The assistant shell creates the one and only
+    /// `LookoutViewModel` — a second instance would mean a second
+    /// `AVCaptureSession` and a second glasses connection fighting the first.
+    @ObservedObject var viewModel: LookoutViewModel
     @State private var showSettings = false
     @State private var showHistory = false
     @State private var followUpText = ""
@@ -997,5 +1000,6 @@ struct ConversationBubble: View {
 }
 
 #Preview {
-    ContentView().environmentObject(SettingsManager())
+    ContentView(viewModel: LookoutViewModel())
+        .environmentObject(SettingsManager())
 }

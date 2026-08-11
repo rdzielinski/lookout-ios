@@ -2,16 +2,41 @@ import Foundation
 import UIKit
 
 // MARK: - Conversation Message
-struct ConversationMessage: Identifiable {
-    let id = UUID()
+///
+/// Single transcript type shared by both halves of the app: the vision
+/// follow-up conversation (`ConversationService`, below) and the assistant's
+/// brain conversation (`BrainService`). Jarvis originally shipped its own
+/// `ConversationMessage` keyed on `content`; that type is gone and this one
+/// carries a `content` alias so brain-side code reads naturally.
+struct ConversationMessage: Identifiable, Codable, Equatable {
+    let id: UUID
     let role: Role
     let text: String
-    let timestamp: Date = Date()
-    
-    enum Role: String {
+    let timestamp: Date
+
+    /// True when this turn was answered with a camera/glasses frame attached.
+    /// Drives the small eye glyph in the transcript.
+    var sawSomething: Bool
+
+    enum Role: String, Codable {
         case user
         case assistant
     }
+
+    init(role: Role, text: String, sawSomething: Bool = false) {
+        self.id = UUID()
+        self.role = role
+        self.text = text
+        self.timestamp = Date()
+        self.sawSomething = sawSomething
+    }
+
+    /// Convenience for brain-side call sites, which think in `content`.
+    init(role: Role, content: String) {
+        self.init(role: role, text: content)
+    }
+
+    var content: String { text }
 }
 
 // MARK: - Conversation Service
@@ -180,8 +205,11 @@ class ConversationService {
         request.timeoutInterval = 20
         
         let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-opus-5",
             "max_tokens": 300,
+            // Spoken follow-up: thinking is on by default on Opus 5 and would
+            // eat the 300-token budget before any text block is produced.
+            "thinking": ["type": "disabled"],
             "system": systemPrompt,
             "messages": apiMessages
         ]

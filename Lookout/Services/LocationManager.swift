@@ -6,7 +6,23 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     @Published var currentLocation: CLLocation?
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
-    
+
+    /// Reverse-geocoded placemark for the most recent fix. Refreshed lazily and
+    /// throttled — the assistant only needs a human-readable "city, state" to
+    /// hand the brain, not a live stream.
+    @Published var currentPlacemark: CLPlacemark?
+
+    private let geocoder = CLGeocoder()
+    private var lastGeocodedLocation: CLLocation?
+
+    /// Human-readable location for brain context, e.g. "Waukesha, WI".
+    /// Nil until a reverse geocode lands.
+    var currentLocationString: String? {
+        guard let placemark = currentPlacemark else { return nil }
+        let parts = [placemark.locality, placemark.administrativeArea].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ")
+    }
+
     override init() {
         super.init()
         manager.delegate = self
@@ -49,9 +65,27 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     var onSignificantLocationChange: ((CLLocation) -> Void)?
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        currentLocation = locations.last
-        if let location = locations.last {
-            onSignificantLocationChange?(location)
+        guard let location = locations.last else { return }
+        currentLocation = location
+        refreshPlacemarkIfNeeded(for: location)
+        onSignificantLocationChange?(location)
+    }
+
+    /// Only re-geocode once we've moved a meaningful distance — reverse
+    /// geocoding is rate-limited by CoreLocation and the assistant just needs
+    /// a coarse city name.
+    private func refreshPlacemarkIfNeeded(for location: CLLocation) {
+        if let last = lastGeocodedLocation, location.distance(from: last) < 1000, currentPlacemark != nil {
+            return
+        }
+        guard !geocoder.isGeocoding else { return }
+
+        lastGeocodedLocation = location
+        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, _ in
+            guard let placemark = placemarks?.first else { return }
+            Task { @MainActor in
+                self?.currentPlacemark = placemark
+            }
         }
     }
 

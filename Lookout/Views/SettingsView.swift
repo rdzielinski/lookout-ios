@@ -19,6 +19,7 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
+                        AssistantSettingsSections(settings: settings)
                         providerAndKeysSection
                         glassesSettingsSection
                         intelligenceAndSpeedSection
@@ -288,47 +289,63 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
+    // MARK: - Active Skills
+
+    // No @ViewBuilder needed — the body is a single expression now.
     private var activeSkillsSection: some View {
         glassSection(header: "Active Skills", icon: "bolt.fill", iconColor: .yellow) {
-            VStack(spacing: 0) {
-                glassSkillRow(name: "Flight Tracking", icon: "airplane", status: .available, note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Landmark ID", icon: "building.2",
-                              status: settings.googlePlacesAPIKey.isEmpty ? .partial : .available,
-                              note: settings.googlePlacesAPIKey.isEmpty ? "Wikipedia only" : "Google Places + Wikipedia",
-                              color: SkillCategory.landmark.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Music ID", icon: "music.note", status: .available, note: "ShazamKit (built-in)", color: SkillCategory.music.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Plant & Animal ID", icon: "leaf", status: .available, note: "iNaturalist (free)", color: SkillCategory.plant.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Vehicle ID", icon: "car", status: .available, note: "NHTSA (free)", color: SkillCategory.vehicle.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Product / Barcode", icon: "barcode", status: .available, note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Translation", icon: "character.book.closed", status: .available, note: "AI-powered text translation", color: SkillCategory.translation.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Food & Nutrition", icon: "fork.knife", status: .available, note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Drink ID", icon: "wineglass", status: .available, note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Receipt Scanner", icon: "receipt", status: .available, note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Medication", icon: "pill", status: .available, note: "OpenFDA (free)", color: SkillCategory.medication.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Book & Movie", icon: "book", status: .available, note: "Open Library (free)", color: SkillCategory.book.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Business Card", icon: "person.text.rectangle", status: .available, note: "AI contact extraction", color: SkillCategory.businessCard.skillColor)
-                glassDivider()
-                glassSkillRow(name: "QR Code", icon: "qrcode", status: .available, note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Face Recognition", icon: "person.crop.circle",
-                              status: settings.faceRecognitionEnabled ? .available : .unavailable,
-                              note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
-                              color: .blue)
-            }
+            ActiveSkillsList(skills: skillCatalog)
         }
+    }
+
+    /// The skill list as data.
+    ///
+    /// This used to be 29 views written out longhand inside one VStack — 15
+    /// rows interleaved with 14 dividers. Swift 5.9 gave ViewBuilder a variadic
+    /// buildBlock, so that compiles happily and then produces a TupleView of 29
+    /// distinct nested types. The mangled name for that type is enormous, and
+    /// swift_getTypeByMangledName recurses in proportion to it — which
+    /// overflowed the stack at runtime once main's eight new skills landed.
+    ///
+    /// As data fed through a ForEach it is a single type no matter how many
+    /// skills exist, so adding the next one can't reintroduce the crash.
+    private var skillCatalog: [SkillRowSpec] {
+        [
+            SkillRowSpec(name: "Flight Tracking", icon: "airplane", status: .available,
+                         note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor),
+            SkillRowSpec(name: "Landmark ID", icon: "building.2",
+                         status: settings.googlePlacesAPIKey.isEmpty ? .partial : .available,
+                         note: settings.googlePlacesAPIKey.isEmpty ? "Wikipedia only" : "Google Places + Wikipedia",
+                         color: SkillCategory.landmark.skillColor),
+            SkillRowSpec(name: "Music ID", icon: "music.note", status: .available,
+                         note: "ShazamKit (built-in)", color: SkillCategory.music.skillColor),
+            SkillRowSpec(name: "Plant & Animal ID", icon: "leaf", status: .available,
+                         note: "iNaturalist (free)", color: SkillCategory.plant.skillColor),
+            SkillRowSpec(name: "Vehicle ID", icon: "car", status: .available,
+                         note: "NHTSA (free)", color: SkillCategory.vehicle.skillColor),
+            SkillRowSpec(name: "Product / Barcode", icon: "barcode", status: .available,
+                         note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor),
+            SkillRowSpec(name: "Translation", icon: "character.book.closed", status: .available,
+                         note: "AI-powered text translation", color: SkillCategory.translation.skillColor),
+            SkillRowSpec(name: "Food & Nutrition", icon: "fork.knife", status: .available,
+                         note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor),
+            SkillRowSpec(name: "Drink ID", icon: "wineglass", status: .available,
+                         note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor),
+            SkillRowSpec(name: "Receipt Scanner", icon: "receipt", status: .available,
+                         note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor),
+            SkillRowSpec(name: "Medication", icon: "pill", status: .available,
+                         note: "OpenFDA (free)", color: SkillCategory.medication.skillColor),
+            SkillRowSpec(name: "Book & Movie", icon: "book", status: .available,
+                         note: "Open Library (free)", color: SkillCategory.book.skillColor),
+            SkillRowSpec(name: "Business Card", icon: "person.text.rectangle", status: .available,
+                         note: "AI contact extraction", color: SkillCategory.businessCard.skillColor),
+            SkillRowSpec(name: "QR Code", icon: "qrcode", status: .available,
+                         note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor),
+            SkillRowSpec(name: "Face Recognition", icon: "person.crop.circle",
+                         status: settings.faceRecognitionEnabled ? .available : .unavailable,
+                         note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
+                         color: .blue),
+        ]
     }
 
     @ViewBuilder
@@ -611,22 +628,6 @@ struct SettingsView: View {
         }
     }
 
-    private func glassSkillRow(name: String, icon: String, status: SkillStatusRow.SkillStatus, note: String, color: Color) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon).foregroundStyle(color).frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.subheadline).foregroundStyle(.white)
-                Text(note).font(.caption).foregroundStyle(.white.opacity(0.4))
-            }
-            Spacer()
-            Text(status.label)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(status.color)
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(status.color.opacity(0.15), in: Capsule())
-        }
-        .padding(.vertical, 2)
-    }
 
     private func syncSpeechSettings() {
         speechService.voiceEngine = settings.voiceEngine
@@ -839,5 +840,332 @@ struct GlassesConnectionCardView: View {
         case .error: return "Connection Failed"
         case .disconnected: return "Not Connected"
         }
+    }
+}
+
+// MARK: - Assistant & Brain Sections
+
+/// Both assistant sections, rendered with their own glass chrome.
+///
+/// Deliberately NOT built from `SettingsView.glassSection`. That helper is a
+/// generic `@ViewBuilder` method, so calling it from `body` folds its whole
+/// content type into `SettingsView.body`'s type. This file already sat at the
+/// edge — the commit immediately before this feature was "Fix SettingsView
+/// stack overflow by extracting body into computed properties" — and two more
+/// `glassSection` calls in `body` pushed it back over, overflowing the Swift
+/// runtime's demangler on the resulting type name.
+///
+/// From `body`'s point of view this is now one plain named type, and the chrome
+/// is reproduced locally with a non-generic ViewModifier so nothing nests.
+struct AssistantSettingsSections: View {
+    @ObservedObject var settings: SettingsManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 10) {
+                GlassCardHeader(title: "Assistant", icon: "sparkle", color: .cyan)
+                AssistantSettingsCard(settings: settings)
+                    .modifier(GlassCardChrome())
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                GlassCardHeader(title: "Brain", icon: "brain", color: .indigo)
+                BrainSettingsCard(settings: settings)
+                    .modifier(GlassCardChrome())
+            }
+        }
+    }
+}
+
+// MARK: - Local Glass Chrome
+
+private struct GlassCardHeader: View {
+    let title: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(color.opacity(0.2))
+                    .frame(width: 28, height: 28)
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.6))
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Spacer()
+        }
+    }
+}
+
+/// Non-generic on purpose: `ViewModifier.Content` is opaque, so wrapping a card
+/// in this does not grow the caller's type the way a generic container would.
+private struct GlassCardChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(red: 0.12, green: 0.12, blue: 0.16))
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.06), Color.clear],
+                        startPoint: .topLeading,
+                        endPoint: .center
+                    )
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+            )
+    }
+}
+
+// MARK: - Assistant Settings Card
+//
+// Broken out of SettingsView as real View types rather than inline builders.
+// Inlining these rows into `glassSection`'s generic @ViewBuilder produced a
+// single deeply-nested generic type that overflowed the stack when evaluated.
+// Each small struct here is its own type with its own body, which caps the
+// nesting depth and keeps the stack flat.
+
+private struct AssistantSettingsCard: View {
+    @ObservedObject var settings: SettingsManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SettingsToggleRow(
+                label: "Assistant Mode",
+                icon: "circle.hexagongrid.fill",
+                isOn: $settings.assistantEnabled
+            )
+            SettingsRowDivider()
+
+            AssistantNameRow(name: $settings.assistantName)
+            SettingsRowDivider()
+
+            assistantToggles
+
+            SettingsFooterText(
+                "Assistant Mode makes the orb your home screen — the camera becomes a mode it can enter. "
+                + "Wake Word listens on-device for your assistant's name and never sends audio anywhere "
+                + "until you ask something. \"Let It Use the Camera\" lets it take a look on its own when "
+                + "a question needs eyes."
+            )
+        }
+    }
+
+    /// Grouped so the parent's stack stays short.
+    @ViewBuilder
+    private var assistantToggles: some View {
+        SettingsToggleRow(label: "Wake Word", icon: "waveform", isOn: $settings.wakeWordEnabled)
+        SettingsRowDivider()
+        SettingsToggleRow(label: "Speak While Streaming", icon: "text.bubble", isOn: $settings.streamingSpeechEnabled)
+        SettingsRowDivider()
+        SettingsToggleRow(label: "Let It Use the Camera", icon: "eye", isOn: $settings.brainCanRequestVision)
+    }
+}
+
+// MARK: - Brain Settings Card
+
+private struct BrainSettingsCard: View {
+    @ObservedObject var settings: SettingsManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WorkerURLRow(url: $settings.brainBaseURL)
+            SettingsRowDivider()
+            WorkerTokenRow(token: $settings.brainAPIToken)
+
+            SettingsFooterText(
+                "Optional. The Cloudflare Worker adds persistent memory plus weather and calendar context. "
+                + "Leave both blank and the assistant runs directly against your Claude key — it just "
+                + "forgets between sessions. See worker/README.md to deploy."
+            )
+        }
+    }
+}
+
+// MARK: - Rows
+
+private struct AssistantNameRow: View {
+    @Binding var name: String
+
+    var body: some View {
+        HStack {
+            Image(systemName: "person.wave.2.fill")
+                .font(.system(size: 15))
+                .foregroundStyle(.white.opacity(0.5))
+                .frame(width: 24)
+            Text("Name")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.9))
+            Spacer()
+            TextField("Jarvis", text: $name)
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.white)
+                .font(.subheadline)
+                .autocorrectionDisabled()
+                .frame(maxWidth: 150)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+private struct WorkerURLRow: View {
+    @Binding var url: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Worker URL")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.5))
+            // Plain field rather than a SecureField — the URL isn't a secret,
+            // and masking it makes typos impossible to spot.
+            TextField("https://jarvis-brain.you.workers.dev", text: $url)
+                .font(.system(.subheadline, design: .monospaced))
+                .foregroundStyle(.white)
+                .tint(.cyan)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+        }
+    }
+}
+
+private struct WorkerTokenRow: View {
+    @Binding var token: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Worker Token")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.5))
+            SecureField("bearer token", text: $token)
+                .textContentType(.password)
+                .font(.system(.subheadline, design: .monospaced))
+                .foregroundStyle(.white)
+                .tint(.cyan)
+        }
+    }
+}
+
+// MARK: - Shared Row Chrome
+//
+// Local copies of SettingsView's `glassDivider` / `settingsFooter`, which are
+// instance methods and so unreachable from these standalone types.
+
+private struct SettingsRowDivider: View {
+    var body: some View {
+        Divider()
+            .overlay(Color.white.opacity(0.08))
+            .padding(.vertical, 8)
+    }
+}
+
+private struct SettingsFooterText: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.35))
+            .padding(.top, 8)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let label: String
+    let icon: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.footnote)
+                    .foregroundStyle(isOn ? .white : .white.opacity(0.4))
+                    .frame(width: 20)
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+            }
+        }
+        .tint(.cyan)
+    }
+}
+
+// MARK: - Active Skills List
+
+/// One skill row, as data.
+struct SkillRowSpec: Identifiable {
+    var id: String { name }
+    let name: String
+    let icon: String
+    let status: SkillStatusRow.SkillStatus
+    let note: String
+    let color: Color
+}
+
+/// Renders the skill catalog through a ForEach.
+///
+/// The point is that this is ONE view type regardless of how many skills the
+/// app grows. The previous hand-written version produced a TupleView with a
+/// distinct generic parameter per row, and the runtime overflowed its stack
+/// resolving the resulting type name.
+private struct ActiveSkillsList: View {
+    let skills: [SkillRowSpec]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(skills.enumerated()), id: \.element.id) { index, skill in
+                if index > 0 {
+                    SettingsRowDivider()
+                }
+                SkillCatalogRow(skill: skill)
+            }
+        }
+    }
+}
+
+private struct SkillCatalogRow: View {
+    let skill: SkillRowSpec
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: skill.icon)
+                .foregroundStyle(skill.color)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(skill.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                Text(skill.note)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+
+            Spacer()
+
+            Text(skill.status.label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(skill.status.color)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(skill.status.color.opacity(0.15), in: Capsule())
+        }
+        .padding(.vertical, 2)
     }
 }

@@ -75,14 +75,28 @@ class BackgroundKeepAliveService: NSObject {
 
     // MARK: - Central Update
 
+    /// Tracks whether we're actually backgrounded. The silent loop is only
+    /// justified there.
+    private var isBackgrounded = false
+
     private func updateKeepAlive() {
         if isAnyFeatureActive {
             enableIdleTimerPrevention()
-            startSilentAudioSession()
         } else {
             disableIdleTimerPrevention()
-            stopSilentAudioSession()
             endBackgroundTaskIfNeeded()
+        }
+
+        // The silent loop exists to stop iOS suspending us in the *background*.
+        // In the foreground it buys nothing and costs plenty: it holds an audio
+        // session for the whole run, and every underflow of that loop lands in
+        // the middle of whatever the assistant is saying — the stuttering,
+        // glitching voice. Enabling proactive narration used to start it at
+        // launch and never stop it.
+        if isAnyFeatureActive && isBackgrounded {
+            startSilentAudioSession()
+        } else {
+            stopSilentAudioSession()
         }
     }
 
@@ -108,9 +122,24 @@ class BackgroundKeepAliveService: NSObject {
         guard !isAudioSessionActive else { return }
 
         do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
+            // `.playback` makes the microphone unavailable for as long as this
+            // silent loop runs, which is "the whole session" — every attempt to
+            // listen then had to fight it for the category, producing an endless
+            // AudioQueue underflow storm. `.playAndRecord` + `.mixWithOthers`
+            // keeps the app alive without locking anyone out.
+            //
+            // And only claim the category at all if nobody owns the session:
+            // when a real consumer holds it, its own configuration is correct
+            // and this silent player is happy playing underneath it.
+            if AudioSessionCoordinator.shared.owner == nil {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(
+                    .playAndRecord,
+                    mode: .default,
+                    options: [.mixWithOthers, .defaultToSpeaker, .allowBluetooth]
+                )
+                try session.setActive(true)
+            }
 
             // Generate a tiny silent WAV in memory (1 second of silence)
             let silentData = generateSilentWAV(durationSeconds: 1.0, sampleRate: 8000)
@@ -136,7 +165,12 @@ class BackgroundKeepAliveService: NSObject {
         audioPlayer?.stop()
         audioPlayer = nil
 
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // Deactivating is global. If a real consumer holds the session, tearing
+        // it down here would deafen the wake-word listener or cut a reply
+        // mid-sentence — leave it to whoever actually owns it.
+        if AudioSessionCoordinator.shared.owner == nil {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
         isAudioSessionActive = false
 
         #if DEBUG
@@ -183,12 +217,14 @@ class BackgroundKeepAliveService: NSObject {
     // MARK: - Strategy 3: Background Task Extension
 
     @objc private func appDidEnterBackground() {
+        isBackgrounded = true
         guard isAnyFeatureActive else { return }
 
         // Request extended background execution time
         backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "LookoutKeepAlive") { [weak self] in
             self?.endBackgroundTaskIfNeeded()
         }
+        updateKeepAlive()
 
         #if DEBUG
         print("🔋 Background task started (remaining: \(UIApplication.shared.backgroundTimeRemaining)s)")
@@ -196,7 +232,10 @@ class BackgroundKeepAliveService: NSObject {
     }
 
     @objc private func appWillEnterForeground() {
+        isBackgrounded = false
         endBackgroundTaskIfNeeded()
+        // Hand the audio session back before the user says anything.
+        updateKeepAlive()
     }
 
     @objc private func appWillTerminate() {

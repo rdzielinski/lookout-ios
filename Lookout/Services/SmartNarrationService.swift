@@ -200,8 +200,11 @@ class SmartNarrationService {
         request.timeoutInterval = 15
         
         let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-opus-5",
             "max_tokens": 200,
+            // Narration is spoken and short — thinking (on by default on
+            // Opus 5) would consume the whole 200-token budget.
+            "thinking": ["type": "disabled"],
             "system": systemPrompt,
             "messages": [
                 ["role": "user", "content": prompt]

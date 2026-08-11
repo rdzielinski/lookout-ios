@@ -45,15 +45,30 @@ class GlassesService: ObservableObject {
     /// (via `capturePhoto()`). When false, it came from the hardware camera button.
     private var expectingProgrammaticCapture = false
 
+    /// Continuations waiting on `capturePhotoAsync()`. The assistant needs to
+    /// *await* a frame — the callback-only API works for the fire-and-forget
+    /// scan flow, but not for "capture, then answer the question you were asked".
+    private var pendingCaptures: [CheckedContinuation<Data, Error>] = []
+
     /// Whether the hardware camera button should trigger Lookout scans
     var cameraButtonEnabled = true
 
     // MARK: - Private — SDK objects
     #if canImport(MWDATCore)
     private let wearables = Wearables.shared
+    #endif
+
+    // StreamSession and AutoDeviceSelector live in MWDATCamera, not MWDATCore.
+    // Declaring them under the Core-only guard meant that if Camera failed to
+    // resolve while Core succeeded, this block still compiled and produced
+    // "Cannot find type 'StreamSession' in scope" instead of cleanly compiling
+    // the glasses features out.
+    #if canImport(MWDATCore) && canImport(MWDATCamera)
     private var streamSession: StreamSession?
     private var deviceSelector: AutoDeviceSelector?
+    #endif
 
+    #if canImport(MWDATCore)
     private var stateListenerToken: AnyListenerToken?
     private var videoFrameListenerToken: AnyListenerToken?
     private var errorListenerToken: AnyListenerToken?
@@ -144,7 +159,9 @@ class GlassesService: ObservableObject {
                 guard let self,
                       let imageData = notification.userInfo?["imageData"] as? Data else { return }
                 print("🕶️ Mock photo capture received (\(imageData.count) bytes)")
-                self.onPhotoCaptured?(imageData)
+                if !self.fulfillPendingCaptures(imageData) {
+                    self.onPhotoCaptured?(imageData)
+                }
             }
         }
         mockObservers.append(photoObserver)
@@ -401,17 +418,24 @@ class GlassesService: ObservableObject {
             foregroundObserver = nil
         }
 
-        #if canImport(MWDATCore)
+        #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task {
             if let session = streamSession {
                 await session.stop()
             }
             streamSession = nil
-            stateListenerToken = nil
-            videoFrameListenerToken = nil
-            errorListenerToken = nil
-            photoDataListenerToken = nil
         }
+        #endif
+
+        #if canImport(MWDATCore)
+        // Dropped synchronously rather than inside the Task above: the point of
+        // disconnecting is to stop receiving callbacks now, not after the
+        // session finishes stopping.
+        stateListenerToken = nil
+        videoFrameListenerToken = nil
+        errorListenerToken = nil
+        photoDataListenerToken = nil
+
         registrationTask?.cancel()
         deviceStreamTask?.cancel()
         connectionTimeoutTask?.cancel()
@@ -664,7 +688,11 @@ class GlassesService: ObservableObject {
                         #if DEBUG
                         print("🕶️ Photo captured (programmatic) — \(jpegData.count) bytes")
                         #endif
-                        self.onPhotoCaptured?(jpegData)
+                        // An awaiting caller (the assistant) takes precedence —
+                        // delivering to both would run the pipeline twice.
+                        if !self.fulfillPendingCaptures(jpegData) {
+                            self.onPhotoCaptured?(jpegData)
+                        }
                     } else {
                         // Hardware camera button press
                         #if DEBUG
@@ -718,7 +746,42 @@ class GlassesService: ObservableObject {
         #endif
     }
 
-    // MARK: - Photo Capture
+    // MARK: - Photo Capture (awaitable)
+
+    /// Capture one frame and return it, rather than delivering via callback.
+    ///
+    /// The timeout matters: if the glasses drop their stream session mid-capture
+    /// the SDK simply never publishes, and without this the assistant would hang
+    /// in `.looking` forever with the orb spinning.
+    func capturePhotoAsync(timeout: TimeInterval = 15) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            pendingCaptures.append(continuation)
+            capturePhoto()
+
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                guard let self, !self.pendingCaptures.isEmpty else { return }
+                let waiting = self.pendingCaptures
+                self.pendingCaptures.removeAll()
+                for pending in waiting {
+                    pending.resume(throwing: LookoutError.apiError("Glasses didn't return a photo in time"))
+                }
+            }
+        }
+    }
+
+    /// Hand a freshly captured frame to anyone awaiting one. Returns true if a
+    /// waiter consumed it, so the normal callback path can be skipped.
+    @discardableResult
+    private func fulfillPendingCaptures(_ data: Data) -> Bool {
+        guard !pendingCaptures.isEmpty else { return false }
+        let waiting = pendingCaptures
+        pendingCaptures.removeAll()
+        for pending in waiting {
+            pending.resume(returning: data)
+        }
+        return true
+    }
 
     func capturePhoto() {
         #if canImport(MWDATCore) && canImport(MWDATCamera)
@@ -815,7 +878,9 @@ class GlassesService: ObservableObject {
     }
 
     func stopStreaming() {
-        #if canImport(MWDATCore)
+        // Whole body is stream-session teardown, so it needs MWDATCamera.
+        // Without it there is no session to stop and this is correctly a no-op.
+        #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task {
             if let session = streamSession {
                 await session.stop()
@@ -863,6 +928,16 @@ class GlassesService: ObservableObject {
 
     /// Stop listening for voice trigger.
     func stopVoiceTriggerListening() {
+        teardownTriggerAudio()
+        AudioSessionCoordinator.shared.release(.glassesTrigger)
+    }
+
+    /// Tear down the engine and tap without touching the coordinator.
+    ///
+    /// Split out from `stopVoiceTriggerListening()` because this is what runs
+    /// when a higher-priority consumer preempts us — releasing from inside
+    /// another consumer's `acquire()` would hand ownership straight back.
+    private func teardownTriggerAudio() {
         triggerRestartTask?.cancel()
         triggerRestartTask = nil
 
@@ -875,6 +950,25 @@ class GlassesService: ObservableObject {
         recognitionRequest = nil
         recognitionTask = nil
         isListeningForTrigger = false
+    }
+
+    /// Called by the coordinator when something with a stronger claim — a reply
+    /// being spoken, a frame being captured, the user dictating — takes the mic.
+    ///
+    /// `nonisolated` and hopping to the main actor: the coordinator is
+    /// deliberately not main-isolated, so this can arrive from any thread and
+    /// `GlassesService` is `@MainActor`. The hop means teardown lands a beat
+    /// after the new owner starts, which is tolerable here — the two engines
+    /// have separate input nodes, so the cost is a few dropped buffers rather
+    /// than a failed `installTap`.
+    nonisolated private func audioSessionRevoked() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.teardownTriggerAudio()
+            // Come back once the other consumer is done. `startRecognitionEngine`
+            // re-acquires and reschedules itself if the mic is still busy.
+            self.scheduleRestart(delay: 4.0)
+        }
     }
 
     /// Temporarily pause voice trigger (e.g., during a scan to avoid audio conflicts)
@@ -901,6 +995,12 @@ class GlassesService: ObservableObject {
     // MARK: - Private — Speech Recognition Engine
 
     private func startRecognitionEngine() {
+        // Idempotent — `register` overwrites. Done here rather than in `init`
+        // so it's in place no matter which entry point started us.
+        AudioSessionCoordinator.shared.register(.glassesTrigger) { [weak self] in
+            self?.audioSessionRevoked()
+        }
+
         // Clean up any previous session
         recognitionTask?.cancel()
         recognitionRequest?.endAudio()
@@ -923,15 +1023,20 @@ class GlassesService: ObservableObject {
 
         recognitionRequest = request
 
+        // Take the mic through the coordinator rather than reconfiguring the
+        // shared session behind everyone's back. Before this, a trigger restart
+        // would flip the category out from under whatever was speaking or
+        // capturing at the time.
+        guard AudioSessionCoordinator.shared.acquire(.glassesTrigger) else {
+            #if DEBUG
+            print("🎤 Mic busy (\(AudioSessionCoordinator.shared.owner?.rawValue ?? "?")) — deferring trigger listener")
+            #endif
+            scheduleRestart(delay: 2.0)
+            return
+        }
+
         do {
-            // Configure audio session — use playAndRecord so TTS can still play
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .default,
-                options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
-            )
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            try AudioSessionCoordinator.shared.configureForRecording()
 
             let inputNode = triggerAudioEngine.inputNode
 
@@ -943,7 +1048,14 @@ class GlassesService: ObservableObject {
             triggerAudioEngine.prepare()
             try triggerAudioEngine.start()
             isListeningForTrigger = true
-            consecutiveErrors = 0  // reset on successful start
+
+            // NOTE: `consecutiveErrors` is deliberately *not* reset here. The
+            // engine starting says nothing about whether recognition works —
+            // and when it doesn't, resetting here made `maxConsecutiveErrors`
+            // unreachable: start (0) → fail (1) → restart → start (0) → …
+            // forever. That's the loop that filled the console. The counter is
+            // now reset only when a transcript actually arrives, i.e. when the
+            // mic is demonstrably ours.
 
             #if DEBUG
             print("🎤 Listening for trigger: \"\(triggerPhrase)\" (on-device: \(request.requiresOnDeviceRecognition))")
@@ -962,6 +1074,9 @@ class GlassesService: ObservableObject {
 
                 if let result {
                     let transcript = result.bestTranscription.formattedString.lowercased()
+
+                    // Real audio came back, so the mic is genuinely ours.
+                    if !transcript.isEmpty { self.consecutiveErrors = 0 }
 
                     // Check for trigger phrase
                     let trigger = self.triggerPhrase.lowercased()

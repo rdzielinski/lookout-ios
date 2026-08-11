@@ -63,11 +63,13 @@ class LookoutViewModel: ObservableObject {
     let glassesService = GlassesService()
     let offlineVision = OfflineVisionService()
     let frameBuffer = FrameBufferService.shared
-    private let haptics = HapticService.shared
-    private var conversationService: ConversationService?
+    // Internal rather than private: `LookoutViewModel+Assistant` reuses this
+    // pipeline from another file, and Swift's `private` is file-scoped.
+    let haptics = HapticService.shared
+    var conversationService: ConversationService?
     private var smartNarration: SmartNarrationService?
-    private var skillRouter: SkillRouter?
-    private var settings: SettingsManager?
+    var skillRouter: SkillRouter?
+    var settings: SettingsManager?
 
     // MARK: - Geocoding Cache
     private var geocodingCache: (location: CLLocation, result: (type: PlaceSignalType, evidence: String?), date: Date)?
@@ -97,9 +99,23 @@ class LookoutViewModel: ObservableObject {
     @Published var isCameraSleeping = false
     private var cameraAutoSleepTask: Task<Void, Never>?
 
+    /// Idempotent. Before the merge this ran exactly once, from `ContentView`'s
+    /// `onAppear`. Now `AssistantHost` configures the view model up front too,
+    /// and `ContentView.onAppear` fires again every time the camera mode is
+    /// presented — without this guard each visit would re-register the Siri
+    /// observer (duplicate scans) and re-run the glasses connect flow.
+    private var isConfigured = false
+
     func configure(settings: SettingsManager) {
+        guard !isConfigured else {
+            // Settings values may have changed even though wiring hasn't.
+            self.settings = settings
+            syncVoiceSettings()
+            return
+        }
+        isConfigured = true
         self.settings = settings
-        
+
         let router = SkillRouter(settings: settings)
         router.faceMemory = faceMemory
         router.placeMemory = placeMemory
@@ -249,9 +265,18 @@ class LookoutViewModel: ObservableObject {
             }
         }
         
-        // Connect and start listening
+        // Connect and start listening.
+        //
+        // The wake-word guard applies here too. Glasses mode routes the mic
+        // over Bluetooth HFP, but it's still one input node — running the
+        // trigger listener alongside the assistant's wake-word detector puts
+        // two recognizers on it and they knock each other out. When the
+        // assistant is awake it handles the wake phrase for the whole app, and
+        // its vision path already prefers the glasses camera.
         glassesService.connect()
-        if settings.glassesAutoListen {
+        if assistantOwnsThePhoneMic {
+            glassesService.triggerEnabled = false
+        } else if settings.glassesAutoListen {
             glassesService.startVoiceTriggerListening()
         }
     }
@@ -264,7 +289,8 @@ class LookoutViewModel: ObservableObject {
         guard let settings = settings else { return }
         guard !settings.glassesMode else { return }
         guard settings.glassesAutoListen else { return }
-        
+        guard !assistantOwnsThePhoneMic else { return }
+
         glassesService.triggerPhrase = settings.glassesTriggerPhrase
         glassesService.triggerEnabled = true
         
@@ -283,10 +309,40 @@ class LookoutViewModel: ObservableObject {
         guard let settings = settings else { return }
         guard !settings.glassesMode, settings.glassesAutoListen else { return }
         guard micPermissionGranted else { return }
-        
+        guard !assistantOwnsThePhoneMic else {
+            // Belt and braces: if this got enabled while the assistant was
+            // listening, shut it down rather than merely declining to start.
+            glassesService.triggerEnabled = false
+            glassesService.stopVoiceTriggerListening()
+            return
+        }
+
         // Wire callbacks if not already done
         setupVoiceTrigger()
         glassesService.startVoiceTriggerListening()
+    }
+
+    /// True when the assistant is the app's front door, and therefore owns the
+    /// microphone.
+    ///
+    /// Lookout's trigger listener and the assistant are separate
+    /// `SFSpeechRecognizer` consumers of one input node. Running both means each
+    /// one's recognition ends immediately with "No speech detected" and
+    /// restarts, forever, and the trigger grabs the mic back between assistant
+    /// turns.
+    ///
+    /// Note this keys off `assistantEnabled` alone, not the wake word. The wake
+    /// word is off by default, so gating on it left the "lookout" listener
+    /// running its restart loop for exactly the users who never asked for it —
+    /// a second, undiscoverable voice path competing with the orb. Whenever the
+    /// assistant is on, it is the only thing listening; its intent router
+    /// already sends "what's this?" down the same capture pipeline the trigger
+    /// phrase used to.
+    ///
+    /// This holds in glasses mode too. The glasses route the mic over Bluetooth
+    /// HFP, but it's still a single input node, so the contention is the same.
+    private var assistantOwnsThePhoneMic: Bool {
+        settings?.assistantEnabled ?? false
     }
     
     /// Process a photo captured from the glasses — runs the same pipeline as the phone camera.
@@ -615,14 +671,7 @@ class LookoutViewModel: ObservableObject {
     /// Wake the camera from sleep — restarts the capture session.
     func wakeCamera() {
         guard isCameraSleeping else { return }
-        isCameraSleeping = false
-
-        let session = captureSession
-        Task.detached {
-            session.startRunning()
-        }
-
-        resetAutoSleepTimer()
+        resumeCaptureSession()
 
         if settings?.voiceOutputEnabled == true {
             speechService.speak("Camera on.")
@@ -630,6 +679,80 @@ class LookoutViewModel: ObservableObject {
         #if DEBUG
         print("☀️ Camera awake — session resumed")
         #endif
+    }
+
+    /// The mechanics of waking, without the spoken confirmation. The assistant
+    /// wakes the camera mid-answer; "Camera on." on top of its reply is two
+    /// voices at once.
+    private func resumeCaptureSession() {
+        isCameraSleeping = false
+        let session = captureSession
+        Task.detached {
+            session.startRunning()
+        }
+        resetAutoSleepTimer()
+    }
+
+    // MARK: - Camera Readiness (Assistant)
+
+    /// True unless the user has actually denied camera access.
+    ///
+    /// Deliberately *not* a check on `captureSession.isRunning`: the assistant
+    /// asks this to decide whether it can promise to look at something, and the
+    /// session is brought up lazily by `ensureCameraRunning()`.
+    var cameraAccessPlausible: Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied, .restricted: return false
+        default: return true
+        }
+    }
+
+    /// Bring the capture session up on demand, returning true once it is
+    /// actually producing frames.
+    ///
+    /// `checkPermissions()` does this from the camera screen's `onAppear`, but
+    /// the assistant is the app's front door now — "what's this?" can arrive
+    /// before the viewfinder has ever been shown, with no camera input
+    /// configured and no session running.
+    @discardableResult
+    func ensureCameraRunning(timeout: TimeInterval = 3.0) async -> Bool {
+        if !cameraPermissionGranted {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                cameraPermissionGranted = true
+            case .notDetermined:
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                cameraPermissionGranted = granted
+                guard granted else { return false }
+            default:
+                return false
+            }
+        }
+
+        if currentCameraInput == nil {
+            setupCameraSession(position: isUsingFrontCamera ? .front : .back)
+        } else if isCameraSleeping {
+            resumeCaptureSession()
+        } else if !captureSession.isRunning {
+            let session = captureSession
+            Task.detached { session.startRunning() }
+        }
+
+        // `startRunning()` is asynchronous and capturing before it lands yields
+        // an empty buffer. Poll for the real thing rather than sleeping on a
+        // guessed delay — cold start and wake-from-sleep are an order of
+        // magnitude apart.
+        let deadline = Date().addingTimeInterval(timeout)
+        while !captureSession.isRunning && Date() < deadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard captureSession.isRunning else { return false }
+
+        // Running still isn't exposed. This settle is short because the poll
+        // above already absorbed the startup cost.
+        try? await Task.sleep(nanoseconds: 250_000_000)
+        resetAutoSleepTimer()
+        return true
     }
 
     /// Toggle camera sleep/wake.
@@ -1064,7 +1187,7 @@ class LookoutViewModel: ObservableObject {
         return String(format: "%.5f, %.5f", location.coordinate.latitude, location.coordinate.longitude)
     }
     
-    private func gatherEnvironmentSignals() async -> ScanEnvironmentSignals {
+    func gatherEnvironmentSignals() async -> ScanEnvironmentSignals {
         async let ambientTask = sampleAmbientAudioLevel()
         async let placeTask = inferPlaceSignal(location: locationManager.currentLocation)
         
@@ -1727,7 +1850,9 @@ class LookoutViewModel: ObservableObject {
 
     // MARK: - Photo Capture
     
-    private func capturePhoto() async throws -> Data {
+    /// Not private: the assistant layer captures frames through
+    /// `LookoutViewModel+Assistant`.
+    func capturePhoto() async throws -> Data {
         let photoSettings = AVCapturePhotoSettings()
         photoSettings.flashMode = .off
         

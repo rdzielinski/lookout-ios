@@ -74,9 +74,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Lookout uses your location to find nearby flights, landmarks, and points of interest.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Lookout uses your microphone to identify music playing nearby using Shazam.</string>
+	<string>Lookout uses your microphone so you can talk to your assistant, and to identify music playing nearby. When the wake word is turned on, it listens for its name on-device — nothing is recorded or sent anywhere until you ask a question.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Lookout uses speech recognition so you can ask follow-up questions about what you see.</string>
+	<string>Lookout uses speech recognition to understand your questions and to detect its wake word on-device.</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
