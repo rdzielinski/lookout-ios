@@ -87,6 +87,8 @@ final class AssistantEngine: ObservableObject {
     private var isDraining = false
     private var turnTask: Task<Void, Never>?
     private var listenTask: Task<Void, Never>?
+    /// Backstop against a turn that never completes. See `runTurn`.
+    private var watchdogTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -315,6 +317,8 @@ final class AssistantEngine: ObservableObject {
 
     private func runTurn(_ work: @escaping () async throws -> Void) {
         turnTask?.cancel()
+        watchdogTask?.cancel()
+
         turnTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -322,7 +326,30 @@ final class AssistantEngine: ObservableObject {
             } catch is CancellationError {
                 // User cancelled — no complaint needed.
             } catch {
+                #if DEBUG
+                print("🧠 Turn failed: \(error)")
+                #endif
                 await self.fail(with: error)
+            }
+            self.watchdogTask?.cancel()
+        }
+
+        // Nothing legitimate takes this long. If a request stalls or a
+        // completion callback is dropped, the assistant must still come back —
+        // a voice assistant that hangs silently is indistinguishable from one
+        // that's broken, and the user has no way to recover but relaunching.
+        watchdogTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 45_000_000_000)
+            guard let self, !Task.isCancelled else { return }
+            switch self.state {
+            case .thinking, .looking:
+                #if DEBUG
+                print("🧠 Watchdog fired — turn stalled in \(self.state)")
+                #endif
+                self.turnTask?.cancel()
+                await self.fail(with: BrainError.noResponse)
+            default:
+                break
             }
         }
     }
@@ -435,6 +462,15 @@ final class AssistantEngine: ObservableObject {
             return
         }
 
+        // A stream that closed without producing anything is a failure, not a
+        // silent success. Left unreported it reads to the user as a hang.
+        if finalText.isEmpty, sentenceQueue.isEmpty, !requestedCapture {
+            #if DEBUG
+            print("🧠 Brain returned an empty response — streaming=\(settings.streamingSpeechEnabled)")
+            #endif
+            throw BrainError.noResponse
+        }
+
         if !finalText.isEmpty {
             messages.append(
                 ConversationMessage(role: .assistant, text: finalText, sawSomething: sawSomething)
@@ -487,7 +523,18 @@ final class AssistantEngine: ObservableObject {
         currentSentence = ""
         AudioSessionCoordinator.shared.release(.playback)
 
-        if state == .speaking { returnToRest() }
+        // Always return to rest when a turn ends.
+        //
+        // This used to be gated on `state == .speaking`, which is only true if
+        // the loop above actually ran. An empty queue — a brain reply that
+        // yielded no sentences — left the engine parked in .thinking forever
+        // with the orb spinning and no way out but relaunching.
+        switch state {
+        case .thinking, .looking, .speaking:
+            returnToRest()
+        case .idle, .wakeWordListening, .listening, .error:
+            break
+        }
     }
 
     private func speakStreaming(single text: String, sawSomething: Bool) async {

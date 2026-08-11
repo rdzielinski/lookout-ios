@@ -197,9 +197,20 @@ final class BrainService {
 
         var seenIndices = Set<Int>()
         var accumulated = ""
+        var sawAnyLine = false
+
+        #if DEBUG
+        print("🧠 /chat/stream opened")
+        #endif
 
         for try await line in bytes.lines {
-            guard line.hasPrefix("data: ") else { continue }
+            sawAnyLine = true
+            guard line.hasPrefix("data: ") else {
+                #if DEBUG
+                if !line.isEmpty { print("🧠 non-data line: \(line.prefix(120))") }
+                #endif
+                continue
+            }
             let payload = String(line.dropFirst(6))
             guard payload != "[DONE]", let data = payload.data(using: .utf8) else { continue }
             guard let chunk = try? JSONDecoder().decode(StreamChunk.self, from: data) else { continue }
@@ -218,7 +229,16 @@ final class BrainService {
                 }
             }
 
+            if let error = chunk.error {
+                #if DEBUG
+                print("🧠 stream reported error: \(error)")
+                #endif
+            }
+
             if chunk.done == true {
+                #if DEBUG
+                print("🧠 stream done — \(seenIndices.count) sentence(s)")
+                #endif
                 onComplete(chunk.fullResponse ?? accumulated)
                 return
             }
@@ -226,6 +246,9 @@ final class BrainService {
 
         // Stream ended without an explicit done frame — treat what we got as
         // the full answer rather than dropping it.
+        #if DEBUG
+        print("🧠 stream closed without done frame (sawAnyLine=\(sawAnyLine), chars=\(accumulated.count))")
+        #endif
         onComplete(accumulated)
     }
 
