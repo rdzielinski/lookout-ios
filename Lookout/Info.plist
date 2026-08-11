@@ -54,7 +54,12 @@
 	<array>
 		<string>bluetooth-peripheral</string>
 		<string>external-accessory</string>
+		<string>audio</string>
+		<string>location</string>
+		<string>fetch</string>
 	</array>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Lookout uses your location in the background so it can narrate context when you arrive at saved places and keep continuous scan running.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Lookout uses Bluetooth to connect to your Meta Ray-Ban smart glasses for hands-free scanning.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>

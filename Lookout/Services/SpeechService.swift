@@ -219,6 +219,10 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         synthesizer.stopSpeaking(at: .immediate)
         isSpeaking = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // Fire any pending completion callback so callers don't get stuck
+        let callback = onSpeechFinished
+        onSpeechFinished = nil
+        callback?()
     }
     
     // MARK: - ElevenLabs TTS
@@ -234,8 +238,15 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
             do {
                 let audioData = try await fetchElevenLabsAudio(text: text)
                 
-                guard !Task.isCancelled else { return }
-                
+                guard !Task.isCancelled else {
+                    await MainActor.run {
+                        let callback = self.onSpeechFinished
+                        self.onSpeechFinished = nil
+                        callback?()
+                    }
+                    return
+                }
+
                 await MainActor.run {
                     do {
                         self.audioPlayer = try AVAudioPlayer(data: audioData)
@@ -250,7 +261,14 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
                     }
                 }
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else {
+                    await MainActor.run {
+                        let callback = self.onSpeechFinished
+                        self.onSpeechFinished = nil
+                        callback?()
+                    }
+                    return
+                }
                 #if DEBUG
                 print("⚠️ ElevenLabs API error: \(error), falling back to Apple")
                 #endif
@@ -389,6 +407,9 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         Task { @MainActor in
             isSpeaking = false
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            let callback = self.onSpeechFinished
+            self.onSpeechFinished = nil
+            callback?()
         }
     }
     
@@ -571,6 +592,9 @@ extension SpeechService: AVAudioPlayerDelegate {
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: (any Error)?) {
         Task { @MainActor in
             isSpeaking = false
+            let callback = self.onSpeechFinished
+            self.onSpeechFinished = nil
+            callback?()
         }
     }
 }

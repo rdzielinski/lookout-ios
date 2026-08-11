@@ -16,7 +16,10 @@ extension LookoutViewModel: VisionProvider {
 
     var isVisionReady: Bool {
         if usingGlassesCamera { return true }
-        return cameraPermissionGranted && captureSession.isRunning
+        // A sleeping camera is still "ready" — `runVisionScan` wakes it. Gating
+        // on `isRunning` alone would make the assistant claim it can't see
+        // after two minutes of idle, which is exactly when you'd ask.
+        return cameraPermissionGranted && (captureSession.isRunning || isCameraSleeping)
     }
 
     /// True when a frame should come from the glasses rather than the phone.
@@ -125,7 +128,11 @@ extension LookoutViewModel: VisionProvider {
             aiResponse: processed.aiResponse,
             skillResult: processed.skillResult,
             faceMatches: processed.faceMatches,
-            nearbyPlace: processed.nearbyPlace
+            nearbyPlace: processed.nearbyPlace,
+            // Carry the spoken question through, so switching to the camera
+            // screen mid-conversation shows what was actually asked rather than
+            // a bare skill card.
+            userQuestion: question
         )
         conversationMessages = conversationService?.messages ?? []
 
@@ -150,6 +157,14 @@ extension LookoutViewModel: VisionProvider {
     private func captureFrame() async throws -> Data {
         if usingGlassesCamera {
             return try await glassesService.capturePhotoAsync()
+        }
+
+        // Wake the phone camera if auto-sleep stopped the session, and give
+        // AVCaptureSession a moment to actually start producing frames —
+        // capturing immediately after startRunning() returns an empty buffer.
+        if isCameraSleeping {
+            wakeCamera()
+            try await Task.sleep(nanoseconds: 600_000_000)
         }
         return try await capturePhoto()
     }

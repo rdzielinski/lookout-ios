@@ -36,6 +36,10 @@ class LookoutViewModel: ObservableObject {
     @Published var conversationMessages: [ConversationMessage] = []
     @Published var isAskingFollowUp = false
     @Published var currentTranscript = ""
+
+    // Pre-scan question (user types/says a question before scanning)
+    @Published var preScanQuestion: String = ""
+    private var pendingGlassesQuestion: String?
     
     // Face matches for current scan
     @Published var currentFaceMatches: [FaceMatch] = []
@@ -45,7 +49,10 @@ class LookoutViewModel: ObservableObject {
     
     // Offline mode
     @Published var isOfflineMode = false
-    
+
+    // Continuous scan mode
+    @Published var isContinuousScanActive = false
+
     // MARK: - Services
     let locationManager = LocationManager()
     let speechService = SpeechService()
@@ -55,6 +62,7 @@ class LookoutViewModel: ObservableObject {
     let userContext = UserContextStore()
     let glassesService = GlassesService()
     let offlineVision = OfflineVisionService()
+    let frameBuffer = FrameBufferService.shared
     // Internal rather than private: `LookoutViewModel+Assistant` reuses this
     // pipeline from another file, and Swift's `private` is file-scoped.
     let haptics = HapticService.shared
@@ -62,12 +70,18 @@ class LookoutViewModel: ObservableObject {
     private var smartNarration: SmartNarrationService?
     var skillRouter: SkillRouter?
     var settings: SettingsManager?
-    
+
     // MARK: - Geocoding Cache
     private var geocodingCache: (location: CLLocation, result: (type: PlaceSignalType, evidence: String?), date: Date)?
-    
+
     // Siri scan observer
     private var siriObserver: Any?
+
+    // Continuous scan timer
+    private var continuousScanTask: Task<Void, Never>?
+
+    // Proactive narration
+    private var lastProactivePlace: String?
 
     // Audio-only / hands-free state
     private var glassesConnectionCancellable: AnyCancellable?
@@ -80,7 +94,11 @@ class LookoutViewModel: ObservableObject {
     let captureSession = AVCaptureSession()
     private var photoOutput = AVCapturePhotoOutput()
     private var currentCameraInput: AVCaptureDeviceInput?
-    
+
+    /// Whether the camera is currently sleeping (stopped to save battery).
+    @Published var isCameraSleeping = false
+    private var cameraAutoSleepTask: Task<Void, Never>?
+
     /// Idempotent. Before the merge this ran exactly once, from `ContentView`'s
     /// `onAppear`. Now `AssistantHost` configures the view model up front too,
     /// and `ContentView.onAppear` fires again every time the camera mode is
@@ -122,10 +140,12 @@ class LookoutViewModel: ObservableObject {
                     if !self.isAudioOnlyMode {
                         self.isAudioOnlyMode = true
                         self.haptics.audioOnlyConfirmed()
+                        BackgroundKeepAliveService.shared.setGlassesMode(true)
                     }
                 } else if !connected {
                     self.isAudioOnlyMode = false
                     self.glassesFlowState = .idle
+                    BackgroundKeepAliveService.shared.setGlassesMode(false)
                 }
             }
         
@@ -146,14 +166,41 @@ class LookoutViewModel: ObservableObject {
                 self?.captureAndAnalyze()
             }
         }
+
+        // Sync background keep-alive state from saved settings
+        syncKeepAliveState()
+
+        // Wire location changes to proactive narration
+        locationManager.onSignificantLocationChange = { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.checkProactiveNarration()
+            }
+        }
     }
-    
+
     deinit {
         if let observer = siriObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
     
+    /// Sync keep-alive state from settings. Call after settings change.
+    func syncKeepAliveState() {
+        guard let settings = settings else { return }
+        // Proactive narration needs background location
+        BackgroundKeepAliveService.shared.setProactiveNarration(settings.proactiveNarrationEnabled)
+        // If continuous scan is enabled in settings but not yet active, the user
+        // must start it explicitly — we don't auto-start on launch.
+        // Glasses mode is managed by the connection callback above.
+
+        // Enable background location updates for proactive narration
+        if settings.proactiveNarrationEnabled {
+            locationManager.enableBackgroundUpdates()
+        } else {
+            locationManager.disableBackgroundUpdates()
+        }
+    }
+
     /// Sync voice engine settings to SpeechService
     func syncVoiceSettings() {
         guard let settings = settings else { return }
@@ -174,10 +221,14 @@ class LookoutViewModel: ObservableObject {
         // Wire photo capture to our pipeline
         glassesService.onPhotoCaptured = { [weak self] imageData in
             Task { @MainActor [weak self] in
-                self?.processGlassesPhoto(imageData)
+                guard let self else { return }
+                // Consume any pending question from voice trigger
+                let question = self.pendingGlassesQuestion
+                self.pendingGlassesQuestion = nil
+                self.processGlassesPhoto(imageData, userQuestion: question)
             }
         }
-        
+
         // Wire hardware camera button — fires when user presses camera button on glasses
         glassesService.cameraButtonEnabled = settings.glassesCameraButtonEnabled
         glassesService.onCameraButtonCaptured = { [weak self] imageData in
@@ -199,15 +250,17 @@ class LookoutViewModel: ObservableObject {
         }
 
         // Wire voice trigger — use glasses camera if connected, phone camera if not
-        glassesService.onVoiceTriggerDetected = { [weak self] in
+        glassesService.onVoiceTriggerDetected = { [weak self] question in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.haptics.capturePressed()
                 if self.glassesService.isGlassesConnected {
+                    // Store question for when photo arrives via onPhotoCaptured
+                    self.pendingGlassesQuestion = question
                     self.glassesService.capturePhoto()
                 } else {
                     // Glasses mode is on but glasses aren't connected — use phone camera
-                    self.captureAndAnalyze()
+                    self.captureAndAnalyze(userQuestion: question)
                 }
             }
         }
@@ -231,10 +284,10 @@ class LookoutViewModel: ObservableObject {
         glassesService.triggerPhrase = settings.glassesTriggerPhrase
         glassesService.triggerEnabled = true
         
-        glassesService.onVoiceTriggerDetected = { [weak self] in
+        glassesService.onVoiceTriggerDetected = { [weak self] question in
             Task { @MainActor [weak self] in
                 self?.haptics.capturePressed()
-                self?.captureAndAnalyze()
+                self?.captureAndAnalyze(userQuestion: question)
             }
         }
         // startVoiceTriggerListening() is called from startVoiceTriggerIfReady()
@@ -255,9 +308,11 @@ class LookoutViewModel: ObservableObject {
     /// Process a photo captured from the glasses — runs the same pipeline as the phone camera.
     /// In audio-only mode, skips visual UI updates and just speaks results.
     /// When hands-free is enabled, enters the conversation state machine after speaking.
-    private func processGlassesPhoto(_ imageData: Data) {
+    private func processGlassesPhoto(_ imageData: Data, userQuestion: String? = nil) {
         guard let settings = settings, let skillRouter = skillRouter else { return }
         guard settings.hasValidAPIKey else { return }
+
+        let question = userQuestion
 
         let audioOnly = isAudioOnlyMode
         isCapturing = true
@@ -293,6 +348,7 @@ class LookoutViewModel: ObservableObject {
                     imageData,
                     location: locationManager.currentLocation,
                     environment: environmentSignals,
+                    userQuestion: question,
                     onStatusUpdate: audioOnly ? nil : { [weak self] status in
                         Task { @MainActor [weak self] in
                             guard let self else { return }
@@ -341,7 +397,8 @@ class LookoutViewModel: ObservableObject {
                     aiResponse: processed.aiResponse,
                     skillResult: processed.skillResult,
                     faceMatches: processed.faceMatches,
-                    nearbyPlace: processed.nearbyPlace
+                    nearbyPlace: processed.nearbyPlace,
+                    userQuestion: question
                 )
                 conversationMessages = conversationService?.messages ?? []
 
@@ -354,6 +411,8 @@ class LookoutViewModel: ObservableObject {
                     conversationTurnCount = 0
                 }
 
+                var didStartSpeech = false
+
                 if settings.smartNarrationEnabled {
                     let narrationDebug = try? await smartNarration?.generateNarrationDebug(
                         skillResult: processed.skillResult,
@@ -362,10 +421,12 @@ class LookoutViewModel: ObservableObject {
                         nearbyPlace: processed.nearbyPlace,
                         userContext: contextString,
                         currentItemTitle: processed.skillResult.title,
-                        currentItemRepeatCount: currentItemRepeatCount
+                        currentItemRepeatCount: currentItemRepeatCount,
+                        userQuestion: question
                     )
 
                     if let text = narrationDebug?.outputText, !text.isEmpty {
+                        didStartSpeech = true
                         if useHandsFree {
                             speechService.speak(text) { [weak self] in
                                 Task { @MainActor [weak self] in
@@ -378,22 +439,31 @@ class LookoutViewModel: ObservableObject {
                     }
                 } else {
                     let segments = speechService.buildSpeechText(from: processed.skillResult)
-                    if useHandsFree {
-                        let combined = segments.joined(separator: " ")
-                        speechService.speak(combined) { [weak self] in
-                            Task { @MainActor [weak self] in
-                                self?.startHandsFreeFollowUp()
+                    let combined = segments.joined(separator: " ")
+                    if !combined.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        didStartSpeech = true
+                        if useHandsFree {
+                            speechService.speak(combined) { [weak self] in
+                                Task { @MainActor [weak self] in
+                                    self?.startHandsFreeFollowUp()
+                                }
                             }
+                        } else {
+                            speechService.speakSegments(segments)
                         }
-                    } else {
-                        speechService.speakSegments(segments)
                     }
                 }
 
                 isCapturing = false
-                if !useHandsFree {
+                // If hands-free speech started, the completion callback will handle state reset.
+                // Otherwise, return to idle immediately.
+                if !useHandsFree || !didStartSpeech {
                     glassesFlowState = .idle
                     glassesService.resumeVoiceTrigger()
+                    if useHandsFree && !didStartSpeech {
+                        // Hands-free was requested but narration produced nothing — start follow-up anyway
+                        startHandsFreeFollowUp()
+                    }
                 }
 
             } catch {
@@ -534,6 +604,74 @@ class LookoutViewModel: ObservableObject {
         setupCameraSession(position: newPosition)
     }
     
+    // MARK: - Camera Power Management
+
+    /// Put the camera to sleep — stops the capture session to save battery.
+    /// The camera preview will freeze on the last frame. Call `wakeCamera()` to resume.
+    func sleepCamera() {
+        guard !isCameraSleeping else { return }
+        isCameraSleeping = true
+        cameraAutoSleepTask?.cancel()
+        cameraAutoSleepTask = nil
+        BackgroundKeepAliveService.shared.setContinuousScan(false)
+
+        let session = captureSession
+        Task.detached {
+            session.stopRunning()
+        }
+
+        if settings?.voiceOutputEnabled == true {
+            speechService.speak("Camera off.")
+        }
+        #if DEBUG
+        print("💤 Camera sleeping — session stopped")
+        #endif
+    }
+
+    /// Wake the camera from sleep — restarts the capture session.
+    func wakeCamera() {
+        guard isCameraSleeping else { return }
+        isCameraSleeping = false
+
+        let session = captureSession
+        Task.detached {
+            session.startRunning()
+        }
+
+        resetAutoSleepTimer()
+
+        if settings?.voiceOutputEnabled == true {
+            speechService.speak("Camera on.")
+        }
+        #if DEBUG
+        print("☀️ Camera awake — session resumed")
+        #endif
+    }
+
+    /// Toggle camera sleep/wake.
+    func toggleCameraPower() {
+        if isCameraSleeping {
+            wakeCamera()
+        } else {
+            sleepCamera()
+        }
+    }
+
+    /// Reset the auto-sleep timer. Called after every scan or user interaction.
+    func resetAutoSleepTimer() {
+        cameraAutoSleepTask?.cancel()
+
+        guard let delay = settings?.cameraAutoSleepDelay, delay > 0 else { return }
+        // Don't auto-sleep during continuous scan or glasses mode
+        guard !isContinuousScanActive, !isAudioOnlyMode else { return }
+
+        cameraAutoSleepTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard let self, !Task.isCancelled else { return }
+            self.sleepCamera()
+        }
+    }
+
     // MARK: - Tap to Focus
     func focus(atNormalizedPoint point: CGPoint) {
         guard let device = currentCameraInput?.device else { return }
@@ -643,7 +781,19 @@ class LookoutViewModel: ObservableObject {
     
     // MARK: - Capture & Analyze (Enhanced Pipeline)
     
-    func captureAndAnalyze() {
+    func captureAndAnalyze(userQuestion: String? = nil) {
+        // Wake camera if sleeping (user tapped scan while camera was off)
+        if isCameraSleeping {
+            wakeCamera()
+            // Give the session a moment to restart before capturing
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                self.captureAndAnalyze(userQuestion: userQuestion)
+            }
+            return
+        }
+        resetAutoSleepTimer()
+
         guard let settings = settings, let skillRouter = skillRouter else {
             errorMessage = "Please configure your API key in Settings"
             return
@@ -658,10 +808,21 @@ class LookoutViewModel: ObservableObject {
             return
         }
 
+        // Capture the user's pre-scan question (from text field or voice trigger)
+        let question: String? = {
+            if let uq = userQuestion, !uq.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return uq
+            }
+            let typed = preScanQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+            return typed.isEmpty ? nil : typed
+        }()
+        preScanQuestion = ""
+
         // If glasses are connected, delegate to the glasses camera.
         // capturePhoto() fires onPhotoCaptured → processGlassesPhoto(),
         // which runs the full AI pipeline — no need to continue here.
         if settings.glassesMode && glassesService.isGlassesConnected {
+            pendingGlassesQuestion = question
             glassesService.capturePhoto()   // processGlassesPhoto handles haptic + UI
             return
         }
@@ -736,6 +897,7 @@ class LookoutViewModel: ObservableObject {
                     imageData,
                     location: locationManager.currentLocation,
                     environment: environmentSignals,
+                    userQuestion: question,
                     onStatusUpdate: { [weak self] status in
                         Task { @MainActor [weak self] in
                             guard let self else { return }
@@ -745,7 +907,7 @@ class LookoutViewModel: ObservableObject {
                         }
                     }
                 )
-                
+
                 query.aiResponse = processed.aiResponse
                 query.skillResult = processed.skillResult
                 query.status = .complete
@@ -783,17 +945,19 @@ class LookoutViewModel: ObservableObject {
                     aiResponse: processed.aiResponse,
                     skillResult: processed.skillResult,
                     faceMatches: processed.faceMatches,
-                    nearbyPlace: processed.nearbyPlace
+                    nearbyPlace: processed.nearbyPlace,
+                    userQuestion: question
                 )
                 conversationMessages = conversationService?.messages ?? []
-                
+
                 syncVoiceSettings()
                 if settings.voiceOutputEnabled {
                     if settings.smartNarrationEnabled {
                         narrationDebug = await speakSmartNarration(
                             processed: processed,
                             contextString: contextString,
-                            currentItemRepeatCount: currentItemRepeatCount
+                            currentItemRepeatCount: currentItemRepeatCount,
+                            userQuestion: question
                         )
                     } else {
                         let segments = speechService.buildSpeechText(from: processed.skillResult)
@@ -875,7 +1039,8 @@ class LookoutViewModel: ObservableObject {
     private func speakSmartNarration(
         processed: ProcessedResult,
         contextString: String,
-        currentItemRepeatCount: Int
+        currentItemRepeatCount: Int,
+        userQuestion: String? = nil
     ) async -> NarrationDebugResult? {
         // Build face relationships dictionary for richer narration
         let faceRelationships = Dictionary(
@@ -895,7 +1060,8 @@ class LookoutViewModel: ObservableObject {
                 userContext: contextString,
                 currentItemTitle: processed.skillResult.title,
                 currentItemRepeatCount: currentItemRepeatCount,
-                faceRelationships: faceRelationships
+                faceRelationships: faceRelationships,
+                userQuestion: userQuestion
             )
 
             if let text = narrationDebug?.outputText, !text.isEmpty {
@@ -1064,7 +1230,7 @@ class LookoutViewModel: ObservableObject {
     }
     
     // MARK: - Place Saving
-    
+
     func saveCurrentPlace(name: String, category: PlaceCategory = .other) {
         guard let location = locationManager.currentLocation else {
             errorMessage = "Location not available"
@@ -1072,6 +1238,175 @@ class LookoutViewModel: ObservableObject {
         }
         placeMemory.saveCurrentLocation(name: name, location: location, category: category)
         haptics.resultReady()
+    }
+
+    // MARK: - Parking Spot
+
+    func saveParkingSpot(notes: String = "") {
+        guard let location = locationManager.currentLocation else {
+            errorMessage = "Location not available"
+            return
+        }
+        placeMemory.saveParkingSpot(location: location, notes: notes)
+        haptics.resultReady()
+        if settings?.voiceOutputEnabled == true {
+            speechService.speak("Parking spot saved. I'll remember where you parked.")
+        }
+    }
+
+    func recallParkingSpot() -> SavedPlace? {
+        placeMemory.currentParkingSpot()
+    }
+
+    // MARK: - Continuous Scan Mode
+
+    func startContinuousScan() {
+        guard !isContinuousScanActive else { return }
+        isContinuousScanActive = true
+        BackgroundKeepAliveService.shared.setContinuousScan(true)
+        let interval = settings?.continuousScanInterval ?? 8.0
+
+        continuousScanTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.isContinuousScanActive else { break }
+                // Don't scan if already processing
+                if !self.isCapturing {
+                    self.captureAndAnalyze()
+                }
+                try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+            }
+        }
+    }
+
+    func stopContinuousScan() {
+        isContinuousScanActive = false
+        continuousScanTask?.cancel()
+        continuousScanTask = nil
+        BackgroundKeepAliveService.shared.setContinuousScan(false)
+    }
+
+    // MARK: - "What Did I Just See?" Replay
+
+    func replayLastFrame() {
+        guard let frame = frameBuffer.mostRecentFrame() else {
+            errorMessage = "No recent frames buffered"
+            return
+        }
+        // Run the standard capture pipeline on the buffered frame
+        processReplayFrame(frame.imageData)
+    }
+
+    func replayFrameFromSecondsAgo(_ seconds: TimeInterval) {
+        guard let frame = frameBuffer.frameFromSecondsAgo(seconds) else {
+            errorMessage = "No frame found from \(Int(seconds))s ago"
+            return
+        }
+        processReplayFrame(frame.imageData)
+    }
+
+    private func processReplayFrame(_ imageData: Data) {
+        guard let settings = settings, let skillRouter = skillRouter else { return }
+        guard settings.hasValidAPIKey else {
+            errorMessage = "No API key configured"
+            return
+        }
+        isCapturing = true
+        errorMessage = nil
+        haptics.scanStarted()
+
+        Task {
+            do {
+                var query = LookoutQuery(imageData: imageData)
+                query.status = .analyzing
+                currentQuery = query
+                showResult = true
+                pendingFaceImageData = imageData
+
+                let processed = try await skillRouter.processImage(
+                    imageData,
+                    location: locationManager.currentLocation,
+                    onStatusUpdate: { [weak self] status in
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            var q = self.currentQuery ?? LookoutQuery(imageData: imageData)
+                            q.status = status
+                            self.currentQuery = q
+                        }
+                    }
+                )
+
+                query.aiResponse = processed.aiResponse
+                query.skillResult = processed.skillResult
+                query.status = .complete
+                currentQuery = query
+                currentFaceMatches = processed.faceMatches
+                haptics.resultReady()
+                queryHistory.insert(query, at: 0)
+
+                syncVoiceSettings()
+                if settings.smartNarrationEnabled, let narration = try? await smartNarration?.generateNarration(
+                    skillResult: processed.skillResult,
+                    aiDescription: processed.aiResponse.description,
+                    faceMatches: processed.faceMatches,
+                    nearbyPlace: processed.nearbyPlace
+                ) {
+                    speechService.speak(narration)
+                }
+                isCapturing = false
+            } catch {
+                errorMessage = error.localizedDescription
+                isCapturing = false
+            }
+        }
+    }
+
+    // MARK: - Proactive Place Narration
+
+    func checkProactiveNarration() {
+        guard let settings = settings, settings.proactiveNarrationEnabled else { return }
+        guard let location = locationManager.currentLocation else { return }
+        guard let place = placeMemory.findNearbyPlace(location: location) else {
+            lastProactivePlace = nil
+            return
+        }
+
+        // Only narrate once per place visit
+        guard place.name != lastProactivePlace else { return }
+        lastProactivePlace = place.name
+
+        // Build a context-aware greeting
+        let contextString = userContext.buildContextPrompt(
+            personalContext: settings.personalContext,
+            faceContext: "",
+            placeContext: placeMemory.contextSummary,
+            nearbyContext: "Arrived at: \(place.name) (\(place.category.rawValue))",
+            currentScanTitle: "",
+            currentScanCategory: ""
+        )
+
+        Task {
+            if settings.smartNarrationEnabled, let narration = try? await smartNarration?.generateNarration(
+                skillResult: SkillResult(
+                    category: .landmark,
+                    title: place.name,
+                    subtitle: place.category.rawValue,
+                    details: [
+                        .init(label: "Visits", value: "\(place.visitCount)", iconName: "figure.walk"),
+                        .init(label: "Notes", value: place.notes, iconName: "bookmark")
+                    ],
+                    sourceApp: "Lookout Memory",
+                    deepLinkURL: nil
+                ),
+                aiDescription: "User arrived at \(place.name), a \(place.category.rawValue) they've visited \(place.visitCount) times.",
+                nearbyPlace: place,
+                userContext: contextString
+            ) {
+                syncVoiceSettings()
+                speechService.speak(narration)
+            }
+        }
+
+        placeMemory.markVisited(name: place.name)
     }
     
     // MARK: - Follow-up Conversation
@@ -1110,6 +1445,8 @@ class LookoutViewModel: ObservableObject {
     }
     
     func sendFollowUp(_ question: String) {
+        // Check for voice commands before sending to AI
+        if checkForVoiceCommand(question: question) { return }
         // Check for face naming intent before sending to AI
         if checkForFaceNaming(question: question) { return }
 
@@ -1169,7 +1506,7 @@ class LookoutViewModel: ObservableObject {
         }
 
         // Timeout — if no speech after configured seconds, return to idle
-        let timeout = settings?.followUpTimeoutSeconds ?? 12.0
+        let timeout = settings.followUpTimeoutSeconds
         followUpTimeoutTask?.cancel()
         followUpTimeoutTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
@@ -1276,6 +1613,68 @@ class LookoutViewModel: ObservableObject {
             self.glassesFlowState = .idle
             self.glassesService.resumeVoiceTrigger()
         }
+    }
+
+    // MARK: - Voice Commands
+
+    /// Intercept common voice commands before sending to AI.
+    /// Returns true if a command was handled locally.
+    private func checkForVoiceCommand(question: String) -> Bool {
+        let lower = question.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Camera power: "camera off", "sleep", "turn off camera", "stop camera"
+        if lower.contains("camera off") || lower.contains("turn off") || lower == "sleep"
+            || lower.contains("stop camera") || lower.contains("pause camera") {
+            sleepCamera()
+            return true
+        }
+
+        // Camera wake: "camera on", "wake up", "turn on camera", "start camera"
+        if lower.contains("camera on") || lower.contains("turn on") || lower == "wake up"
+            || lower.contains("start camera") || lower.contains("resume camera") {
+            wakeCamera()
+            return true
+        }
+
+        // Save parking: "save parking", "remember parking", "park here", "save my car"
+        if lower.contains("save parking") || lower.contains("remember parking")
+            || lower.contains("park here") || lower.contains("save my car")
+            || lower.contains("parked here") {
+            saveParkingSpot()
+            return true
+        }
+
+        // Find parking: "where did I park", "find my car", "where's my car"
+        if lower.contains("where") && (lower.contains("park") || lower.contains("my car")) {
+            if let spot = recallParkingSpot() {
+                let msg = "You parked at \(spot.notes). I can show you directions."
+                speechService.speak(msg)
+            } else {
+                speechService.speak("I don't have a saved parking spot.")
+            }
+            return true
+        }
+
+        // Replay: "what did I just see", "what was that", "replay"
+        if lower.contains("what did i just") || lower.contains("what was that")
+            || lower == "replay" || lower.contains("go back") {
+            replayLastFrame()
+            return true
+        }
+
+        // Continuous scan: "start scanning", "keep scanning", "stop scanning"
+        if lower.contains("start scan") || lower.contains("keep scan") || lower.contains("continuous scan") {
+            startContinuousScan()
+            speechService.speak("Continuous scanning started.")
+            return true
+        }
+        if lower.contains("stop scan") {
+            stopContinuousScan()
+            speechService.speak("Continuous scanning stopped.")
+            return true
+        }
+
+        return false
     }
 
     // MARK: - Voice-Based Face Naming
@@ -1454,10 +1853,14 @@ class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate {
         }
         
         if let image = UIImage(data: data), let compressed = image.jpegData(compressionQuality: 0.7) {
+            // Buffer frame for replay if enabled
+            FrameBufferService.shared.addFrame(imageData: compressed)
             continuation?.resume(returning: compressed)
         } else {
+            FrameBufferService.shared.addFrame(imageData: data)
             continuation?.resume(returning: data)
         }
         continuation = nil
     }
 }
+

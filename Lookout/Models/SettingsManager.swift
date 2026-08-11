@@ -51,6 +51,15 @@ class SettingsManager: ObservableObject {
     @AppStorage("followUpTimeoutSeconds") var followUpTimeoutSeconds: Double = 12.0
     @AppStorage("glassesCameraButtonEnabled") var glassesCameraButtonEnabled: Bool = true
 
+    // MARK: - Speed & New Features
+    @AppStorage("useFastModel") var useFastModel: Bool = true
+    @AppStorage("continuousScanEnabled") var continuousScanEnabled: Bool = false
+    @AppStorage("continuousScanInterval") var continuousScanInterval: Double = 8.0
+    @AppStorage("proactiveNarrationEnabled") var proactiveNarrationEnabled: Bool = true
+    @AppStorage("replayBufferEnabled") var replayBufferEnabled: Bool = true
+    @AppStorage("cameraAutoSleepEnabled") var cameraAutoSleepEnabled: Bool = true
+    @AppStorage("cameraAutoSleepDelay") var cameraAutoSleepDelay: Double = 120  // seconds, 0 = disabled
+
     // MARK: - Assistant (Jarvis)
     //
     // Replaces the old `JarvisConfig` static-UserDefaults struct. The assistant

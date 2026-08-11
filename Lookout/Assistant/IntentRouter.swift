@@ -52,6 +52,8 @@ struct IntentRouter {
         "check this out", "tell me about this", "tell me about that",
         "scan this", "scan that", "read this", "read that",
         "identify this", "identify that", "what am i seeing",
+        "what does this say", "what does that say", "what does this mean",
+        "translate this", "translate that",
     ]
 
     /// Verbs that imply pointing the camera, when paired with a deictic.
@@ -76,6 +78,22 @@ struct IntentRouter {
         "barcode", "label", "price", "product", "sign", "menu", "text",
         // MusicSkill
         "song", "music", "track", "tune",
+        // TranslationSkill
+        "translate", "translation", "written",
+        // FoodSkill
+        "food", "dish", "meal", "recipe", "ingredient", "calories",
+        // DrinkSkill
+        "drink", "wine", "beer", "cocktail", "bottle",
+        // ReceiptSkill
+        "receipt", "bill", "total",
+        // MedicationSkill
+        "pill", "medication", "medicine", "prescription", "dosage",
+        // BookSkill
+        "book", "author", "cover", "novel",
+        // BusinessCardSkill
+        "card", "contact",
+        // QRCodeSkill ("barcode" already covered above)
+        "qr",
         // FaceMemoryService
         "person", "face", "guy", "woman", "man",
         // General
