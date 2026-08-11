@@ -19,8 +19,7 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        assistantSection
-                        brainSection
+                        AssistantSettingsSections(settings: settings)
                         providerAndKeysSection
                         glassesSettingsSection
                         intelligenceAndSpeedSection
@@ -54,32 +53,6 @@ struct SettingsView: View {
             #if DEBUG
             .sheet(isPresented: $showMockGlasses) { MockGlassesTestView() }
             #endif
-        }
-    }
-
-    // MARK: - Assistant & Brain
-
-    /// Each `glassSection` gets exactly ONE child, and that child is a named
-    /// `View` struct rather than an inline builder.
-    ///
-    /// The first version of this inlined ten children — toggles, dividers, a
-    /// nested HStack and VStack, each with its own modifier chain — directly
-    /// into `glassSection`, which is a generic `@ViewBuilder` function. That
-    /// produces one enormous nested generic type, and evaluating it overflowed
-    /// the stack at runtime (EXC_BAD_ACCESS in the section getter). Splitting
-    /// the sections into separate `View` types caps the nesting per type and
-    /// gives each its own stack budget.
-    @ViewBuilder
-    private var assistantSection: some View {
-        glassSection(header: "Assistant", icon: "sparkle", iconColor: .cyan) {
-            AssistantSettingsCard(settings: settings)
-        }
-    }
-
-    @ViewBuilder
-    private var brainSection: some View {
-        glassSection(header: "Brain", icon: "brain", iconColor: .indigo) {
-            BrainSettingsCard(settings: settings)
         }
     }
 
@@ -867,6 +840,92 @@ struct GlassesConnectionCardView: View {
         case .error: return "Connection Failed"
         case .disconnected: return "Not Connected"
         }
+    }
+}
+
+// MARK: - Assistant & Brain Sections
+
+/// Both assistant sections, rendered with their own glass chrome.
+///
+/// Deliberately NOT built from `SettingsView.glassSection`. That helper is a
+/// generic `@ViewBuilder` method, so calling it from `body` folds its whole
+/// content type into `SettingsView.body`'s type. This file already sat at the
+/// edge — the commit immediately before this feature was "Fix SettingsView
+/// stack overflow by extracting body into computed properties" — and two more
+/// `glassSection` calls in `body` pushed it back over, overflowing the Swift
+/// runtime's demangler on the resulting type name.
+///
+/// From `body`'s point of view this is now one plain named type, and the chrome
+/// is reproduced locally with a non-generic ViewModifier so nothing nests.
+struct AssistantSettingsSections: View {
+    @ObservedObject var settings: SettingsManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 10) {
+                GlassCardHeader(title: "Assistant", icon: "sparkle", color: .cyan)
+                AssistantSettingsCard(settings: settings)
+                    .modifier(GlassCardChrome())
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                GlassCardHeader(title: "Brain", icon: "brain", color: .indigo)
+                BrainSettingsCard(settings: settings)
+                    .modifier(GlassCardChrome())
+            }
+        }
+    }
+}
+
+// MARK: - Local Glass Chrome
+
+private struct GlassCardHeader: View {
+    let title: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(color.opacity(0.2))
+                    .frame(width: 28, height: 28)
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(color)
+            }
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.6))
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Spacer()
+        }
+    }
+}
+
+/// Non-generic on purpose: `ViewModifier.Content` is opaque, so wrapping a card
+/// in this does not grow the caller's type the way a generic container would.
+private struct GlassCardChrome: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color(red: 0.12, green: 0.12, blue: 0.16))
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.06), Color.clear],
+                        startPoint: .topLeading,
+                        endPoint: .center
+                    )
+                }
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.8)
+            )
     }
 }
 
