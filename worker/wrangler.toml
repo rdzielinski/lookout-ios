@@ -3,11 +3,13 @@ main = "src/index.js"
 compatibility_date = "2026-01-15"
 
 # Conversation memory and long-term notes.
-# Namespace ids are not secrets — they're account-scoped handles, and this file
-# is meant to be committed.
+# Namespace ids are account-scoped handles rather than secrets, so this file is
+# meant to be committed — but the id is only valid for the account wrangler is
+# logged into. Confirm with `wrangler kv namespace list` if a deploy ever
+# reports "KV namespace not found".
 [[kv_namespaces]]
 binding = "JARVIS_KV"
-id = "02327dc878fa4ceb9ed60ddcf7351857"
+id = "e062910ffb984e6aba60a8e07d0d1c56"
 
 [vars]
 # Model used for conversation. Sonnet is the latency/quality sweet spot for a
