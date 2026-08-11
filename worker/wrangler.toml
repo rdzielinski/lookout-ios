@@ -12,9 +12,9 @@ binding = "JARVIS_KV"
 id = "e062910ffb984e6aba60a8e07d0d1c56"
 
 [vars]
-# Model used for conversation. Sonnet is the latency/quality sweet spot for a
-# voice loop; swap to an Opus model if you'd rather have depth than speed.
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+# Model used for conversation. Swap to "claude-sonnet-5" if you'd rather trade
+# some depth for a faster first token — the request shape is identical.
+CLAUDE_MODEL = "claude-opus-5"
 # How long a conversation session survives without activity (seconds).
 SESSION_TTL = "14400"
 # Owner's home coordinates, used for weather when the client sends no location.

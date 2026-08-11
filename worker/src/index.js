@@ -273,8 +273,13 @@ async function callClaude(env, system, messages) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
+      model: env.CLAUDE_MODEL || 'claude-opus-5',
       max_tokens: 512,
+      // Thinking is on by default on Opus 5, and thinking tokens come out of
+      // max_tokens. In a voice loop that buys latency we can't spend and can
+      // starve the spoken answer, so turn it off. Only valid at effort <= high
+      // (high is the default, so we don't set effort at all).
+      thinking: { type: 'disabled' },
       system,
       messages,
     }),
@@ -302,8 +307,10 @@ async function* claudeStream(env, system, messages) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
+      model: env.CLAUDE_MODEL || 'claude-opus-5',
       max_tokens: 512,
+      // See callClaude — thinking off keeps the first spoken sentence early.
+      thinking: { type: 'disabled' },
       system,
       messages,
       stream: true,

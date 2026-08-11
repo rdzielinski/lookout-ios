@@ -205,8 +205,11 @@ class ConversationService {
         request.timeoutInterval = 20
         
         let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-opus-5",
             "max_tokens": 300,
+            // Spoken follow-up: thinking is on by default on Opus 5 and would
+            // eat the 300-token budget before any text block is produced.
+            "thinking": ["type": "disabled"],
             "system": systemPrompt,
             "messages": apiMessages
         ]

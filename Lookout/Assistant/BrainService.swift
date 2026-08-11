@@ -327,8 +327,11 @@ final class BrainService {
         messages.append(["role": "user", "content": userMessage])
 
         let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-opus-5",
             "max_tokens": 512,
+            // Thinking is on by default on Opus 5 and spends max_tokens; this
+            // is a spoken reply, so trade the reasoning depth for latency.
+            "thinking": ["type": "disabled"],
             "system": localSystemPrompt(),
             "messages": messages,
         ]

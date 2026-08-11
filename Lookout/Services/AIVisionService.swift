@@ -160,10 +160,10 @@ class AIVisionService {
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.timeoutInterval = 20
 
-        // Use Haiku for fast classification routing; saves ~1-2s vs Sonnet.
-        let model = settings.useFastModel ? "claude-haiku-4-5-20251001" : "claude-sonnet-4-20250514"
+        // Use Haiku for fast classification routing; saves ~1-2s vs Opus.
+        let model = settings.useFastModel ? "claude-haiku-4-5-20251001" : "claude-opus-5"
 
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": model,
             "max_tokens": 300,
             "system": systemPrompt,
@@ -187,6 +187,13 @@ class AIVisionService {
                 ]
             ]
         ]
+
+        // Opus 5 thinks by default and thinking tokens come out of max_tokens,
+        // which would leave nothing for the JSON we need back. Haiku doesn't
+        // take this parameter, so only send it on the Opus path.
+        if !settings.useFastModel {
+            body["thinking"] = ["type": "disabled"]
+        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -225,8 +232,11 @@ class AIVisionService {
         request.timeoutInterval = 30
         
         let body: [String: Any] = [
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-opus-5",
             "max_tokens": 500,
+            // Streaming description — thinking off so the first text_delta
+            // arrives immediately instead of behind a reasoning pass.
+            "thinking": ["type": "disabled"],
             "stream": true,
             "system": systemPrompt,
             "messages": [
