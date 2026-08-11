@@ -56,9 +56,19 @@ class GlassesService: ObservableObject {
     // MARK: - Private — SDK objects
     #if canImport(MWDATCore)
     private let wearables = Wearables.shared
+    #endif
+
+    // StreamSession and AutoDeviceSelector live in MWDATCamera, not MWDATCore.
+    // Declaring them under the Core-only guard meant that if Camera failed to
+    // resolve while Core succeeded, this block still compiled and produced
+    // "Cannot find type 'StreamSession' in scope" instead of cleanly compiling
+    // the glasses features out.
+    #if canImport(MWDATCore) && canImport(MWDATCamera)
     private var streamSession: StreamSession?
     private var deviceSelector: AutoDeviceSelector?
+    #endif
 
+    #if canImport(MWDATCore)
     private var stateListenerToken: AnyListenerToken?
     private var videoFrameListenerToken: AnyListenerToken?
     private var errorListenerToken: AnyListenerToken?
@@ -408,17 +418,24 @@ class GlassesService: ObservableObject {
             foregroundObserver = nil
         }
 
-        #if canImport(MWDATCore)
+        #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task {
             if let session = streamSession {
                 await session.stop()
             }
             streamSession = nil
-            stateListenerToken = nil
-            videoFrameListenerToken = nil
-            errorListenerToken = nil
-            photoDataListenerToken = nil
         }
+        #endif
+
+        #if canImport(MWDATCore)
+        // Dropped synchronously rather than inside the Task above: the point of
+        // disconnecting is to stop receiving callbacks now, not after the
+        // session finishes stopping.
+        stateListenerToken = nil
+        videoFrameListenerToken = nil
+        errorListenerToken = nil
+        photoDataListenerToken = nil
+
         registrationTask?.cancel()
         deviceStreamTask?.cancel()
         connectionTimeoutTask?.cancel()
@@ -861,7 +878,9 @@ class GlassesService: ObservableObject {
     }
 
     func stopStreaming() {
-        #if canImport(MWDATCore)
+        // Whole body is stream-session teardown, so it needs MWDATCamera.
+        // Without it there is no session to stop and this is correctly a no-op.
+        #if canImport(MWDATCore) && canImport(MWDATCamera)
         Task {
             if let session = streamSession {
                 await session.stop()
