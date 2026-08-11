@@ -108,9 +108,24 @@ class BackgroundKeepAliveService: NSObject {
         guard !isAudioSessionActive else { return }
 
         do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true)
+            // `.playback` makes the microphone unavailable for as long as this
+            // silent loop runs, which is "the whole session" — every attempt to
+            // listen then had to fight it for the category, producing an endless
+            // AudioQueue underflow storm. `.playAndRecord` + `.mixWithOthers`
+            // keeps the app alive without locking anyone out.
+            //
+            // And only claim the category at all if nobody owns the session:
+            // when a real consumer holds it, its own configuration is correct
+            // and this silent player is happy playing underneath it.
+            if AudioSessionCoordinator.shared.owner == nil {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(
+                    .playAndRecord,
+                    mode: .default,
+                    options: [.mixWithOthers, .defaultToSpeaker, .allowBluetooth]
+                )
+                try session.setActive(true)
+            }
 
             // Generate a tiny silent WAV in memory (1 second of silence)
             let silentData = generateSilentWAV(durationSeconds: 1.0, sampleRate: 8000)
@@ -136,7 +151,12 @@ class BackgroundKeepAliveService: NSObject {
         audioPlayer?.stop()
         audioPlayer = nil
 
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // Deactivating is global. If a real consumer holds the session, tearing
+        // it down here would deafen the wake-word listener or cut a reply
+        // mid-sentence — leave it to whoever actually owns it.
+        if AudioSessionCoordinator.shared.owner == nil {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
         isAudioSessionActive = false
 
         #if DEBUG

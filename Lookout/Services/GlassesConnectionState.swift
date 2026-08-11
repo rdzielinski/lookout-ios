@@ -928,6 +928,16 @@ class GlassesService: ObservableObject {
 
     /// Stop listening for voice trigger.
     func stopVoiceTriggerListening() {
+        teardownTriggerAudio()
+        AudioSessionCoordinator.shared.release(.glassesTrigger)
+    }
+
+    /// Tear down the engine and tap without touching the coordinator.
+    ///
+    /// Split out from `stopVoiceTriggerListening()` because this is what runs
+    /// when a higher-priority consumer preempts us — releasing from inside
+    /// another consumer's `acquire()` would hand ownership straight back.
+    private func teardownTriggerAudio() {
         triggerRestartTask?.cancel()
         triggerRestartTask = nil
 
@@ -940,6 +950,25 @@ class GlassesService: ObservableObject {
         recognitionRequest = nil
         recognitionTask = nil
         isListeningForTrigger = false
+    }
+
+    /// Called by the coordinator when something with a stronger claim — a reply
+    /// being spoken, a frame being captured, the user dictating — takes the mic.
+    ///
+    /// `nonisolated` and hopping to the main actor: the coordinator is
+    /// deliberately not main-isolated, so this can arrive from any thread and
+    /// `GlassesService` is `@MainActor`. The hop means teardown lands a beat
+    /// after the new owner starts, which is tolerable here — the two engines
+    /// have separate input nodes, so the cost is a few dropped buffers rather
+    /// than a failed `installTap`.
+    nonisolated private func audioSessionRevoked() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.teardownTriggerAudio()
+            // Come back once the other consumer is done. `startRecognitionEngine`
+            // re-acquires and reschedules itself if the mic is still busy.
+            self.scheduleRestart(delay: 4.0)
+        }
     }
 
     /// Temporarily pause voice trigger (e.g., during a scan to avoid audio conflicts)
@@ -966,6 +995,12 @@ class GlassesService: ObservableObject {
     // MARK: - Private — Speech Recognition Engine
 
     private func startRecognitionEngine() {
+        // Idempotent — `register` overwrites. Done here rather than in `init`
+        // so it's in place no matter which entry point started us.
+        AudioSessionCoordinator.shared.register(.glassesTrigger) { [weak self] in
+            self?.audioSessionRevoked()
+        }
+
         // Clean up any previous session
         recognitionTask?.cancel()
         recognitionRequest?.endAudio()
@@ -988,15 +1023,20 @@ class GlassesService: ObservableObject {
 
         recognitionRequest = request
 
+        // Take the mic through the coordinator rather than reconfiguring the
+        // shared session behind everyone's back. Before this, a trigger restart
+        // would flip the category out from under whatever was speaking or
+        // capturing at the time.
+        guard AudioSessionCoordinator.shared.acquire(.glassesTrigger) else {
+            #if DEBUG
+            print("🎤 Mic busy (\(AudioSessionCoordinator.shared.owner?.rawValue ?? "?")) — deferring trigger listener")
+            #endif
+            scheduleRestart(delay: 2.0)
+            return
+        }
+
         do {
-            // Configure audio session — use playAndRecord so TTS can still play
-            let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .default,
-                options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
-            )
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            try AudioSessionCoordinator.shared.configureForRecording()
 
             let inputNode = triggerAudioEngine.inputNode
 
@@ -1008,7 +1048,14 @@ class GlassesService: ObservableObject {
             triggerAudioEngine.prepare()
             try triggerAudioEngine.start()
             isListeningForTrigger = true
-            consecutiveErrors = 0  // reset on successful start
+
+            // NOTE: `consecutiveErrors` is deliberately *not* reset here. The
+            // engine starting says nothing about whether recognition works —
+            // and when it doesn't, resetting here made `maxConsecutiveErrors`
+            // unreachable: start (0) → fail (1) → restart → start (0) → …
+            // forever. That's the loop that filled the console. The counter is
+            // now reset only when a transcript actually arrives, i.e. when the
+            // mic is demonstrably ours.
 
             #if DEBUG
             print("🎤 Listening for trigger: \"\(triggerPhrase)\" (on-device: \(request.requiresOnDeviceRecognition))")
@@ -1027,6 +1074,9 @@ class GlassesService: ObservableObject {
 
                 if let result {
                     let transcript = result.bestTranscription.formattedString.lowercased()
+
+                    // Real audio came back, so the mic is genuinely ours.
+                    if !transcript.isEmpty { self.consecutiveErrors = 0 }
 
                     // Check for trigger phrase
                     let trigger = self.triggerPhrase.lowercased()

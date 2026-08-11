@@ -16,10 +16,12 @@ extension LookoutViewModel: VisionProvider {
 
     var isVisionReady: Bool {
         if usingGlassesCamera { return true }
-        // A sleeping camera is still "ready" — `runVisionScan` wakes it. Gating
-        // on `isRunning` alone would make the assistant claim it can't see
-        // after two minutes of idle, which is exactly when you'd ask.
-        return cameraPermissionGranted && (captureSession.isRunning || isCameraSleeping)
+        // Readiness is a question about *permission*, not about the current
+        // state of the capture session. Gating on `isRunning` made the
+        // assistant answer "I can't open the camera" whenever the viewfinder
+        // hadn't been visited yet — which, on an orb-first app, is most of the
+        // time. `captureFrame()` brings the session up instead.
+        return cameraAccessPlausible
     }
 
     /// True when a frame should come from the glasses rather than the phone.
@@ -159,12 +161,13 @@ extension LookoutViewModel: VisionProvider {
             return try await glassesService.capturePhotoAsync()
         }
 
-        // Wake the phone camera if auto-sleep stopped the session, and give
-        // AVCaptureSession a moment to actually start producing frames —
-        // capturing immediately after startRunning() returns an empty buffer.
-        if isCameraSleeping {
-            wakeCamera()
-            try await Task.sleep(nanoseconds: 600_000_000)
+        // Configure and start the session if this is the first time anything
+        // has asked for a frame, wake it if auto-sleep stopped it, and wait for
+        // it to actually produce frames.
+        guard await ensureCameraRunning() else {
+            throw LookoutError.apiError(
+                "I can't get to the camera — check Lookout's camera permission in Settings."
+            )
         }
         return try await capturePhoto()
     }
