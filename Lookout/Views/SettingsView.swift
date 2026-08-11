@@ -289,47 +289,63 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
+    // MARK: - Active Skills
+
+    // No @ViewBuilder needed — the body is a single expression now.
     private var activeSkillsSection: some View {
         glassSection(header: "Active Skills", icon: "bolt.fill", iconColor: .yellow) {
-            VStack(spacing: 0) {
-                glassSkillRow(name: "Flight Tracking", icon: "airplane", status: .available, note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Landmark ID", icon: "building.2",
-                              status: settings.googlePlacesAPIKey.isEmpty ? .partial : .available,
-                              note: settings.googlePlacesAPIKey.isEmpty ? "Wikipedia only" : "Google Places + Wikipedia",
-                              color: SkillCategory.landmark.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Music ID", icon: "music.note", status: .available, note: "ShazamKit (built-in)", color: SkillCategory.music.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Plant & Animal ID", icon: "leaf", status: .available, note: "iNaturalist (free)", color: SkillCategory.plant.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Vehicle ID", icon: "car", status: .available, note: "NHTSA (free)", color: SkillCategory.vehicle.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Product / Barcode", icon: "barcode", status: .available, note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Translation", icon: "character.book.closed", status: .available, note: "AI-powered text translation", color: SkillCategory.translation.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Food & Nutrition", icon: "fork.knife", status: .available, note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Drink ID", icon: "wineglass", status: .available, note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Receipt Scanner", icon: "receipt", status: .available, note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Medication", icon: "pill", status: .available, note: "OpenFDA (free)", color: SkillCategory.medication.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Book & Movie", icon: "book", status: .available, note: "Open Library (free)", color: SkillCategory.book.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Business Card", icon: "person.text.rectangle", status: .available, note: "AI contact extraction", color: SkillCategory.businessCard.skillColor)
-                glassDivider()
-                glassSkillRow(name: "QR Code", icon: "qrcode", status: .available, note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor)
-                glassDivider()
-                glassSkillRow(name: "Face Recognition", icon: "person.crop.circle",
-                              status: settings.faceRecognitionEnabled ? .available : .unavailable,
-                              note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
-                              color: .blue)
-            }
+            ActiveSkillsList(skills: skillCatalog)
         }
+    }
+
+    /// The skill list as data.
+    ///
+    /// This used to be 29 views written out longhand inside one VStack — 15
+    /// rows interleaved with 14 dividers. Swift 5.9 gave ViewBuilder a variadic
+    /// buildBlock, so that compiles happily and then produces a TupleView of 29
+    /// distinct nested types. The mangled name for that type is enormous, and
+    /// swift_getTypeByMangledName recurses in proportion to it — which
+    /// overflowed the stack at runtime once main's eight new skills landed.
+    ///
+    /// As data fed through a ForEach it is a single type no matter how many
+    /// skills exist, so adding the next one can't reintroduce the crash.
+    private var skillCatalog: [SkillRowSpec] {
+        [
+            SkillRowSpec(name: "Flight Tracking", icon: "airplane", status: .available,
+                         note: "OpenSky Network (free)", color: SkillCategory.flight.skillColor),
+            SkillRowSpec(name: "Landmark ID", icon: "building.2",
+                         status: settings.googlePlacesAPIKey.isEmpty ? .partial : .available,
+                         note: settings.googlePlacesAPIKey.isEmpty ? "Wikipedia only" : "Google Places + Wikipedia",
+                         color: SkillCategory.landmark.skillColor),
+            SkillRowSpec(name: "Music ID", icon: "music.note", status: .available,
+                         note: "ShazamKit (built-in)", color: SkillCategory.music.skillColor),
+            SkillRowSpec(name: "Plant & Animal ID", icon: "leaf", status: .available,
+                         note: "iNaturalist (free)", color: SkillCategory.plant.skillColor),
+            SkillRowSpec(name: "Vehicle ID", icon: "car", status: .available,
+                         note: "NHTSA (free)", color: SkillCategory.vehicle.skillColor),
+            SkillRowSpec(name: "Product / Barcode", icon: "barcode", status: .available,
+                         note: "Vision + Open Food Facts + UPCitemdb", color: SkillCategory.product.skillColor),
+            SkillRowSpec(name: "Translation", icon: "character.book.closed", status: .available,
+                         note: "AI-powered text translation", color: SkillCategory.translation.skillColor),
+            SkillRowSpec(name: "Food & Nutrition", icon: "fork.knife", status: .available,
+                         note: "AI calorie/macro estimation", color: SkillCategory.food.skillColor),
+            SkillRowSpec(name: "Drink ID", icon: "wineglass", status: .available,
+                         note: "Wine, beer, coffee labels", color: SkillCategory.drink.skillColor),
+            SkillRowSpec(name: "Receipt Scanner", icon: "receipt", status: .available,
+                         note: "Expense tracking + OCR", color: SkillCategory.receipt.skillColor),
+            SkillRowSpec(name: "Medication", icon: "pill", status: .available,
+                         note: "OpenFDA (free)", color: SkillCategory.medication.skillColor),
+            SkillRowSpec(name: "Book & Movie", icon: "book", status: .available,
+                         note: "Open Library (free)", color: SkillCategory.book.skillColor),
+            SkillRowSpec(name: "Business Card", icon: "person.text.rectangle", status: .available,
+                         note: "AI contact extraction", color: SkillCategory.businessCard.skillColor),
+            SkillRowSpec(name: "QR Code", icon: "qrcode", status: .available,
+                         note: "URLs, WiFi, contacts", color: SkillCategory.qrCode.skillColor),
+            SkillRowSpec(name: "Face Recognition", icon: "person.crop.circle",
+                         status: settings.faceRecognitionEnabled ? .available : .unavailable,
+                         note: settings.faceRecognitionEnabled ? "On-device Vision" : "Disabled",
+                         color: .blue),
+        ]
     }
 
     @ViewBuilder
@@ -612,22 +628,6 @@ struct SettingsView: View {
         }
     }
 
-    private func glassSkillRow(name: String, icon: String, status: SkillStatusRow.SkillStatus, note: String, color: Color) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon).foregroundStyle(color).frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.subheadline).foregroundStyle(.white)
-                Text(note).font(.caption).foregroundStyle(.white.opacity(0.4))
-            }
-            Spacer()
-            Text(status.label)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(status.color)
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(status.color.opacity(0.15), in: Capsule())
-        }
-        .padding(.vertical, 2)
-    }
 
     private func syncSpeechSettings() {
         speechService.voiceEngine = settings.voiceEngine
@@ -1103,5 +1103,69 @@ private struct SettingsToggleRow: View {
             }
         }
         .tint(.cyan)
+    }
+}
+
+// MARK: - Active Skills List
+
+/// One skill row, as data.
+struct SkillRowSpec: Identifiable {
+    var id: String { name }
+    let name: String
+    let icon: String
+    let status: SkillStatusRow.SkillStatus
+    let note: String
+    let color: Color
+}
+
+/// Renders the skill catalog through a ForEach.
+///
+/// The point is that this is ONE view type regardless of how many skills the
+/// app grows. The previous hand-written version produced a TupleView with a
+/// distinct generic parameter per row, and the runtime overflowed its stack
+/// resolving the resulting type name.
+private struct ActiveSkillsList: View {
+    let skills: [SkillRowSpec]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(skills.enumerated()), id: \.element.id) { index, skill in
+                if index > 0 {
+                    SettingsRowDivider()
+                }
+                SkillCatalogRow(skill: skill)
+            }
+        }
+    }
+}
+
+private struct SkillCatalogRow: View {
+    let skill: SkillRowSpec
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: skill.icon)
+                .foregroundStyle(skill.color)
+                .frame(width: 22)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(skill.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+                Text(skill.note)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.4))
+            }
+
+            Spacer()
+
+            Text(skill.status.label)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(skill.status.color)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(skill.status.color.opacity(0.15), in: Capsule())
+        }
+        .padding(.vertical, 2)
     }
 }
