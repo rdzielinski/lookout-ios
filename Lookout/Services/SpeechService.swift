@@ -151,6 +151,52 @@ class SpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         self.onSpeechFinished = onFinished
         speak(text)
     }
+
+    /// Speak and return only once playback has finished.
+    ///
+    /// `speak(_:)` calls `stop()` on entry, so back-to-back calls cut each other
+    /// off. The assistant's streaming TTS queue needs to speak sentence N+1
+    /// *after* sentence N, so it awaits this instead.
+    ///
+    /// The timeout is a deadlock guard: if a completion callback is ever lost
+    /// (a cancelled ElevenLabs fetch, an interrupted session), the queue must
+    /// still drain rather than wedging the assistant in `.speaking` forever.
+    /// It's sized generously off text length so it never truncates real speech.
+    func speakAndWait(_ text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let timeout = min(60.0, 4.0 + Double(trimmed.count) * 0.09)
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let resumed = ResumeGuard()
+
+            Task { @MainActor in
+                self.speak(trimmed) {
+                    if resumed.claim() { continuation.resume() }
+                }
+            }
+
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                if resumed.claim() { continuation.resume() }
+            }
+        }
+    }
+
+    /// Serializes the two racers above so the continuation resumes exactly once.
+    private final class ResumeGuard: @unchecked Sendable {
+        private var claimed = false
+        private let lock = NSLock()
+
+        func claim() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            if claimed { return false }
+            claimed = true
+            return true
+        }
+    }
     
     func speakSegments(_ segments: [String]) {
         let combined = segments.joined(separator: " ")

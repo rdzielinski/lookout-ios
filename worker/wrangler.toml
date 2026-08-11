@@ -1,0 +1,27 @@
+name = "jarvis-brain"
+main = "src/index.js"
+compatibility_date = "2026-01-15"
+
+# Conversation memory and long-term notes.
+# Create with:  wrangler kv namespace create JARVIS_KV
+# then paste the returned id below.
+[[kv_namespaces]]
+binding = "JARVIS_KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+# Model used for conversation. Sonnet is the latency/quality sweet spot for a
+# voice loop; swap to an Opus model if you'd rather have depth than speed.
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
+# How long a conversation session survives without activity (seconds).
+SESSION_TTL = "14400"
+# Owner's home coordinates, used for weather when the client sends no location.
+DEFAULT_LAT = "43.0117"
+DEFAULT_LON = "-88.2315"
+
+# Secrets — set these with `wrangler secret put <NAME>`, never in this file:
+#   ANTHROPIC_API_KEY      Claude API key
+#   JARVIS_API_TOKEN       Bearer token the iOS app sends (openssl rand -hex 32)
+#   OPENWEATHER_API_KEY    optional, enables weather context
+#   GOOGLE_CLIENT_ID       optional, enables calendar
+#   GOOGLE_CLIENT_SECRET   optional, enables calendar

@@ -20,6 +20,69 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
+                        // Assistant — first, because it's now the app's front door
+                        glassSection(
+                            header: "Assistant",
+                            icon: "sparkle",
+                            iconColor: .cyan
+                        ) {
+                            glassToggle("Assistant Mode", icon: "circle.hexagongrid.fill", isOn: $settings.assistantEnabled)
+                            glassDivider()
+
+                            HStack {
+                                Image(systemName: "person.wave.2.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(.white.opacity(0.5))
+                                    .frame(width: 24)
+                                Text("Name")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white.opacity(0.9))
+                                Spacer()
+                                TextField("Jarvis", text: $settings.assistantName)
+                                    .multilineTextAlignment(.trailing)
+                                    .foregroundStyle(.white)
+                                    .font(.subheadline)
+                                    .autocorrectionDisabled()
+                                    .frame(maxWidth: 150)
+                            }
+                            .padding(.vertical, 8)
+
+                            glassDivider()
+                            glassToggle("Wake Word", icon: "waveform", isOn: $settings.wakeWordEnabled)
+                            glassDivider()
+                            glassToggle("Speak While Streaming", icon: "text.bubble", isOn: $settings.streamingSpeechEnabled)
+                            glassDivider()
+                            glassToggle("Let It Use the Camera", icon: "eye", isOn: $settings.brainCanRequestVision)
+
+                            settingsFooter("Assistant Mode makes the orb your home screen — the camera becomes a mode it can enter. Wake Word listens on-device for \"\(settings.assistantName)\" and never sends audio anywhere until you ask something. \"Let It Use the Camera\" allows the assistant to take a look on its own when a question needs eyes.")
+                        }
+
+                        // Brain
+                        glassSection(
+                            header: "Brain",
+                            icon: "brain",
+                            iconColor: .indigo
+                        ) {
+                            // Plain field, not apiKeyField — the URL isn't a
+                            // secret and masking it makes typos impossible to spot.
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Worker URL")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.white.opacity(0.5))
+                                TextField("https://jarvis-brain.you.workers.dev", text: $settings.brainBaseURL)
+                                    .font(.system(.subheadline, design: .monospaced))
+                                    .foregroundStyle(.white)
+                                    .tint(.cyan)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .keyboardType(.URL)
+                            }
+                            glassDivider()
+                            apiKeyField(label: "Worker Token", placeholder: "bearer token", text: $settings.brainAPIToken)
+
+                            settingsFooter("Optional. The Cloudflare Worker adds persistent memory plus weather and calendar context. Leave both blank and the assistant runs directly against your Claude key — it just forgets between sessions. See worker/README.md to deploy.")
+                        }
+
                         // AI Provider
                         glassSection(
                             header: "AI Provider",

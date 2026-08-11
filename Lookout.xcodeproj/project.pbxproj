@@ -51,6 +51,16 @@
 		A100000016 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000016 /* HistoryView.swift */; };
 		A100000017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B100000017 /* Assets.xcassets */; };
 		A100000018 /* ScanDebugTrace.swift in Sources */ = {isa = PBXBuildFile; fileRef = B100000019 /* ScanDebugTrace.swift */; };
+		A200000001 /* AssistantState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000001 /* AssistantState.swift */; };
+		A200000002 /* AudioSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000002 /* AudioSessionCoordinator.swift */; };
+		A200000003 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000003 /* IntentRouter.swift */; };
+		A200000004 /* BrainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000004 /* BrainService.swift */; };
+		A200000005 /* WakeWordDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000005 /* WakeWordDetector.swift */; };
+		A200000006 /* AssistantEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000006 /* AssistantEngine.swift */; };
+		A200000007 /* AssistantHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000007 /* AssistantHost.swift */; };
+		A200000008 /* LookoutViewModel+Assistant.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000008 /* LookoutViewModel+Assistant.swift */; };
+		A200000009 /* OrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000009 /* OrbView.swift */; };
+		A200000010 /* AssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000010 /* AssistantView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -97,6 +107,16 @@
 		B100000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B100000019 /* ScanDebugTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDebugTrace.swift; sourceTree = "<group>"; };
 		B100000099 /* Lookout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lookout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B200000001 /* AssistantState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantState.swift"; sourceTree = "<group>"; };
+		B200000002 /* AudioSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioSessionCoordinator.swift"; sourceTree = "<group>"; };
+		B200000003 /* IntentRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntentRouter.swift"; sourceTree = "<group>"; };
+		B200000004 /* BrainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BrainService.swift"; sourceTree = "<group>"; };
+		B200000005 /* WakeWordDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WakeWordDetector.swift"; sourceTree = "<group>"; };
+		B200000006 /* AssistantEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantEngine.swift"; sourceTree = "<group>"; };
+		B200000007 /* AssistantHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantHost.swift"; sourceTree = "<group>"; };
+		B200000008 /* LookoutViewModel+Assistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LookoutViewModel+Assistant.swift"; sourceTree = "<group>"; };
+		B200000009 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OrbView.swift"; sourceTree = "<group>"; };
+		B200000010 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantView.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,6 +155,7 @@
 				D100000004 /* Views */,
 				D100000005 /* ViewModels */,
 				D100000006 /* Services */,
+				D200000001 /* Assistant */,
 				D100000007 /* Skills */,
 				21B2B8DF2F46883F00EAD15C /* test_glasses_capture.jpg */,
 			);
@@ -216,6 +237,31 @@
 				B100000099 /* Lookout.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D200000001 /* Assistant */ = {
+			isa = PBXGroup;
+			children = (
+				B200000001 /* AssistantState.swift */,
+				B200000002 /* AudioSessionCoordinator.swift */,
+				B200000003 /* IntentRouter.swift */,
+				B200000004 /* BrainService.swift */,
+				B200000005 /* WakeWordDetector.swift */,
+				B200000006 /* AssistantEngine.swift */,
+				B200000007 /* AssistantHost.swift */,
+				B200000008 /* LookoutViewModel+Assistant.swift */,
+				D200000002 /* Views */,
+			);
+			path = Assistant;
+			sourceTree = "<group>";
+		};
+		D200000002 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B200000009 /* OrbView.swift */,
+				B200000010 /* AssistantView.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -330,6 +376,16 @@
 				21B2B8EE2F46A75800EAD15C /* PlaceSignalType.swift in Sources */,
 				A100000018 /* ScanDebugTrace.swift in Sources */,
 				214F2D9F2F400A8E0063539A /* HapticService.swift in Sources */,
+				A200000001 /* AssistantState.swift in Sources */,
+				A200000002 /* AudioSessionCoordinator.swift in Sources */,
+				A200000003 /* IntentRouter.swift in Sources */,
+				A200000004 /* BrainService.swift in Sources */,
+				A200000005 /* WakeWordDetector.swift in Sources */,
+				A200000006 /* AssistantEngine.swift in Sources */,
+				A200000007 /* AssistantHost.swift in Sources */,
+				A200000008 /* LookoutViewModel+Assistant.swift in Sources */,
+				A200000009 /* OrbView.swift in Sources */,
+				A200000010 /* AssistantView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

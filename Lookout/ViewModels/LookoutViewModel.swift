@@ -55,11 +55,13 @@ class LookoutViewModel: ObservableObject {
     let userContext = UserContextStore()
     let glassesService = GlassesService()
     let offlineVision = OfflineVisionService()
-    private let haptics = HapticService.shared
-    private var conversationService: ConversationService?
+    // Internal rather than private: `LookoutViewModel+Assistant` reuses this
+    // pipeline from another file, and Swift's `private` is file-scoped.
+    let haptics = HapticService.shared
+    var conversationService: ConversationService?
     private var smartNarration: SmartNarrationService?
-    private var skillRouter: SkillRouter?
-    private var settings: SettingsManager?
+    var skillRouter: SkillRouter?
+    var settings: SettingsManager?
     
     // MARK: - Geocoding Cache
     private var geocodingCache: (location: CLLocation, result: (type: PlaceSignalType, evidence: String?), date: Date)?
@@ -79,9 +81,23 @@ class LookoutViewModel: ObservableObject {
     private var photoOutput = AVCapturePhotoOutput()
     private var currentCameraInput: AVCaptureDeviceInput?
     
+    /// Idempotent. Before the merge this ran exactly once, from `ContentView`'s
+    /// `onAppear`. Now `AssistantHost` configures the view model up front too,
+    /// and `ContentView.onAppear` fires again every time the camera mode is
+    /// presented — without this guard each visit would re-register the Siri
+    /// observer (duplicate scans) and re-run the glasses connect flow.
+    private var isConfigured = false
+
     func configure(settings: SettingsManager) {
+        guard !isConfigured else {
+            // Settings values may have changed even though wiring hasn't.
+            self.settings = settings
+            syncVoiceSettings()
+            return
+        }
+        isConfigured = true
         self.settings = settings
-        
+
         let router = SkillRouter(settings: settings)
         router.faceMemory = faceMemory
         router.placeMemory = placeMemory
@@ -898,7 +914,7 @@ class LookoutViewModel: ObservableObject {
         return String(format: "%.5f, %.5f", location.coordinate.latitude, location.coordinate.longitude)
     }
     
-    private func gatherEnvironmentSignals() async -> ScanEnvironmentSignals {
+    func gatherEnvironmentSignals() async -> ScanEnvironmentSignals {
         async let ambientTask = sampleAmbientAudioLevel()
         async let placeTask = inferPlaceSignal(location: locationManager.currentLocation)
         
@@ -1328,7 +1344,9 @@ class LookoutViewModel: ObservableObject {
 
     // MARK: - Photo Capture
     
-    private func capturePhoto() async throws -> Data {
+    /// Not private: the assistant layer captures frames through
+    /// `LookoutViewModel+Assistant`.
+    func capturePhoto() async throws -> Data {
         let photoSettings = AVCapturePhotoSettings()
         photoSettings.flashMode = .off
         

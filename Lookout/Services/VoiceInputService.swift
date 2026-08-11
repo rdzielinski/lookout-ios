@@ -16,6 +16,12 @@ class VoiceInputService: ObservableObject {
     
     init() {
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+        // Dictation outranks every other mic consumer, but it still registers a
+        // teardown handler so `releaseAll()` (backgrounding, entering the
+        // viewfinder) can shut it down cleanly.
+        AudioSessionCoordinator.shared.register(.dictation) { [weak self] in
+            self?.teardownAudio()
+        }
     }
     
     // MARK: - Permission
@@ -36,12 +42,14 @@ class VoiceInputService: ObservableObject {
         guard let recognizer = recognizer, recognizer.isAvailable else {
             throw LookoutError.apiError("Speech recognition not available")
         }
-        
-        // Configure audio session
-        let audioSession = AVAudioSession.sharedInstance()
-        try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
-        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-        
+
+        // Claim the mic, evicting the wake-word listener or glasses trigger if
+        // either is holding it. Dictation has top priority, so this only fails
+        // if dictation is already running — which the stopListening() at the top
+        // of this method has already handled.
+        AudioSessionCoordinator.shared.acquire(.dictation)
+        try AudioSessionCoordinator.shared.configureForRecording()
+
         // Reset the engine to clear any stale state
         audioEngine = AVAudioEngine()
         
@@ -96,6 +104,16 @@ class VoiceInputService: ObservableObject {
     // MARK: - Stop Listening
     
     func stopListening() {
+        teardownAudio()
+        AudioSessionCoordinator.shared.release(.dictation)
+    }
+
+    /// Tear down the engine without touching session ownership.
+    ///
+    /// Split out because this is what the coordinator's revoke handler calls: it
+    /// runs *during* another consumer's `acquire`, so releasing from here would
+    /// re-enter the coordinator and hand ownership back mid-handoff.
+    private func teardownAudio() {
         if audioEngine.isRunning {
             audioEngine.stop()
         }
@@ -104,7 +122,7 @@ class VoiceInputService: ObservableObject {
         recognitionTask?.cancel()
         recognitionRequest = nil
         recognitionTask = nil
-        
+
         Task { @MainActor in
             isListening = false
         }

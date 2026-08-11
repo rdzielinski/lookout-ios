@@ -6,9 +6,16 @@ import MWDATCore
 
 @main
 struct LookoutApp: App {
-    @StateObject private var settingsManager = SettingsManager()
+    @StateObject private var settingsManager: SettingsManager
+    /// Built once, here, so the camera session and the assistant share a single
+    /// view model for the life of the app.
+    @StateObject private var host: AssistantHost
 
     init() {
+        let settings = SettingsManager()
+        _settingsManager = StateObject(wrappedValue: settings)
+        _host = StateObject(wrappedValue: AssistantHost(settings: settings))
+
         #if canImport(MWDATCore)
         do {
             try Wearables.configure()
@@ -23,9 +30,18 @@ struct LookoutApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(settingsManager)
-                .onOpenURL { url in
+            Group {
+                if settingsManager.assistantEnabled {
+                    // Assistant-first: the orb is home, the camera is a mode.
+                    AssistantView(host: host)
+                } else {
+                    // Classic Lookout: straight into the viewfinder. Same view
+                    // model either way, so switching doesn't restart the camera.
+                    ContentView(viewModel: host.viewModel)
+                }
+            }
+            .environmentObject(settingsManager)
+            .onOpenURL { url in
                     // Handle Meta AI app callbacks for glasses registration
                     #if canImport(MWDATCore)
                     #if DEBUG

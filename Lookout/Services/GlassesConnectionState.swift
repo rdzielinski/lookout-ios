@@ -45,6 +45,11 @@ class GlassesService: ObservableObject {
     /// (via `capturePhoto()`). When false, it came from the hardware camera button.
     private var expectingProgrammaticCapture = false
 
+    /// Continuations waiting on `capturePhotoAsync()`. The assistant needs to
+    /// *await* a frame — the callback-only API works for the fire-and-forget
+    /// scan flow, but not for "capture, then answer the question you were asked".
+    private var pendingCaptures: [CheckedContinuation<Data, Error>] = []
+
     /// Whether the hardware camera button should trigger Lookout scans
     var cameraButtonEnabled = true
 
@@ -144,7 +149,9 @@ class GlassesService: ObservableObject {
                 guard let self,
                       let imageData = notification.userInfo?["imageData"] as? Data else { return }
                 print("🕶️ Mock photo capture received (\(imageData.count) bytes)")
-                self.onPhotoCaptured?(imageData)
+                if !self.fulfillPendingCaptures(imageData) {
+                    self.onPhotoCaptured?(imageData)
+                }
             }
         }
         mockObservers.append(photoObserver)
@@ -642,7 +649,11 @@ class GlassesService: ObservableObject {
                         #if DEBUG
                         print("🕶️ Photo captured (programmatic) — \(jpegData.count) bytes")
                         #endif
-                        self.onPhotoCaptured?(jpegData)
+                        // An awaiting caller (the assistant) takes precedence —
+                        // delivering to both would run the pipeline twice.
+                        if !self.fulfillPendingCaptures(jpegData) {
+                            self.onPhotoCaptured?(jpegData)
+                        }
                     } else {
                         // Hardware camera button press
                         #if DEBUG
@@ -696,7 +707,42 @@ class GlassesService: ObservableObject {
         #endif
     }
 
-    // MARK: - Photo Capture
+    // MARK: - Photo Capture (awaitable)
+
+    /// Capture one frame and return it, rather than delivering via callback.
+    ///
+    /// The timeout matters: if the glasses drop their stream session mid-capture
+    /// the SDK simply never publishes, and without this the assistant would hang
+    /// in `.looking` forever with the orb spinning.
+    func capturePhotoAsync(timeout: TimeInterval = 15) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            pendingCaptures.append(continuation)
+            capturePhoto()
+
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                guard let self, !self.pendingCaptures.isEmpty else { return }
+                let waiting = self.pendingCaptures
+                self.pendingCaptures.removeAll()
+                for pending in waiting {
+                    pending.resume(throwing: LookoutError.apiError("Glasses didn't return a photo in time"))
+                }
+            }
+        }
+    }
+
+    /// Hand a freshly captured frame to anyone awaiting one. Returns true if a
+    /// waiter consumed it, so the normal callback path can be skipped.
+    @discardableResult
+    private func fulfillPendingCaptures(_ data: Data) -> Bool {
+        guard !pendingCaptures.isEmpty else { return false }
+        let waiting = pendingCaptures
+        pendingCaptures.removeAll()
+        for pending in waiting {
+            pending.resume(returning: data)
+        }
+        return true
+    }
 
     func capturePhoto() {
         #if canImport(MWDATCore) && canImport(MWDATCamera)
