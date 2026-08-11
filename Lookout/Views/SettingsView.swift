@@ -19,7 +19,8 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        assistantAndBrainSection
+                        assistantSection
+                        brainSection
                         providerAndKeysSection
                         glassesSettingsSection
                         intelligenceAndSpeedSection
@@ -58,62 +59,27 @@ struct SettingsView: View {
 
     // MARK: - Assistant & Brain
 
-    /// Kept as its own computed property rather than inlined into `body`.
-    /// The body was extracted into sections precisely because one giant view
-    /// builder blew the type-checker's stack; adding to it inline would undo that.
+    /// Each `glassSection` gets exactly ONE child, and that child is a named
+    /// `View` struct rather than an inline builder.
+    ///
+    /// The first version of this inlined ten children — toggles, dividers, a
+    /// nested HStack and VStack, each with its own modifier chain — directly
+    /// into `glassSection`, which is a generic `@ViewBuilder` function. That
+    /// produces one enormous nested generic type, and evaluating it overflowed
+    /// the stack at runtime (EXC_BAD_ACCESS in the section getter). Splitting
+    /// the sections into separate `View` types caps the nesting per type and
+    /// gives each its own stack budget.
     @ViewBuilder
-    private var assistantAndBrainSection: some View {
+    private var assistantSection: some View {
         glassSection(header: "Assistant", icon: "sparkle", iconColor: .cyan) {
-            glassToggle("Assistant Mode", icon: "circle.hexagongrid.fill", isOn: $settings.assistantEnabled)
-            glassDivider()
-
-            HStack {
-                Image(systemName: "person.wave.2.fill")
-                    .font(.system(size: 15))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(width: 24)
-                Text("Name")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.9))
-                Spacer()
-                TextField("Jarvis", text: $settings.assistantName)
-                    .multilineTextAlignment(.trailing)
-                    .foregroundStyle(.white)
-                    .font(.subheadline)
-                    .autocorrectionDisabled()
-                    .frame(maxWidth: 150)
-            }
-            .padding(.vertical, 8)
-
-            glassDivider()
-            glassToggle("Wake Word", icon: "waveform", isOn: $settings.wakeWordEnabled)
-            glassDivider()
-            glassToggle("Speak While Streaming", icon: "text.bubble", isOn: $settings.streamingSpeechEnabled)
-            glassDivider()
-            glassToggle("Let It Use the Camera", icon: "eye", isOn: $settings.brainCanRequestVision)
-
-            settingsFooter("Assistant Mode makes the orb your home screen — the camera becomes a mode it can enter. Wake Word listens on-device for \"\(settings.assistantName)\" and never sends audio anywhere until you ask something.")
+            AssistantSettingsCard(settings: settings)
         }
+    }
 
+    @ViewBuilder
+    private var brainSection: some View {
         glassSection(header: "Brain", icon: "brain", iconColor: .indigo) {
-            // Plain field, not apiKeyField — the URL isn't a secret and masking
-            // it makes typos impossible to spot.
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Worker URL")
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.5))
-                TextField("https://jarvis-brain.you.workers.dev", text: $settings.brainBaseURL)
-                    .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(.white)
-                    .tint(.cyan)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-            }
-            glassDivider()
-            apiKeyField(label: "Worker Token", placeholder: "bearer token", text: $settings.brainAPIToken)
-
-            settingsFooter("Optional. The Cloudflare Worker adds persistent memory plus weather and calendar context. Leave both blank and the assistant runs directly against your Claude key — it just forgets between sessions. See worker/README.md to deploy.")
+            BrainSettingsCard(settings: settings)
         }
     }
 
@@ -901,5 +867,182 @@ struct GlassesConnectionCardView: View {
         case .error: return "Connection Failed"
         case .disconnected: return "Not Connected"
         }
+    }
+}
+
+// MARK: - Assistant Settings Card
+//
+// Broken out of SettingsView as real View types rather than inline builders.
+// Inlining these rows into `glassSection`'s generic @ViewBuilder produced a
+// single deeply-nested generic type that overflowed the stack when evaluated.
+// Each small struct here is its own type with its own body, which caps the
+// nesting depth and keeps the stack flat.
+
+private struct AssistantSettingsCard: View {
+    @ObservedObject var settings: SettingsManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SettingsToggleRow(
+                label: "Assistant Mode",
+                icon: "circle.hexagongrid.fill",
+                isOn: $settings.assistantEnabled
+            )
+            SettingsRowDivider()
+
+            AssistantNameRow(name: $settings.assistantName)
+            SettingsRowDivider()
+
+            assistantToggles
+
+            SettingsFooterText(
+                "Assistant Mode makes the orb your home screen — the camera becomes a mode it can enter. "
+                + "Wake Word listens on-device for your assistant's name and never sends audio anywhere "
+                + "until you ask something. \"Let It Use the Camera\" lets it take a look on its own when "
+                + "a question needs eyes."
+            )
+        }
+    }
+
+    /// Grouped so the parent's stack stays short.
+    @ViewBuilder
+    private var assistantToggles: some View {
+        SettingsToggleRow(label: "Wake Word", icon: "waveform", isOn: $settings.wakeWordEnabled)
+        SettingsRowDivider()
+        SettingsToggleRow(label: "Speak While Streaming", icon: "text.bubble", isOn: $settings.streamingSpeechEnabled)
+        SettingsRowDivider()
+        SettingsToggleRow(label: "Let It Use the Camera", icon: "eye", isOn: $settings.brainCanRequestVision)
+    }
+}
+
+// MARK: - Brain Settings Card
+
+private struct BrainSettingsCard: View {
+    @ObservedObject var settings: SettingsManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            WorkerURLRow(url: $settings.brainBaseURL)
+            SettingsRowDivider()
+            WorkerTokenRow(token: $settings.brainAPIToken)
+
+            SettingsFooterText(
+                "Optional. The Cloudflare Worker adds persistent memory plus weather and calendar context. "
+                + "Leave both blank and the assistant runs directly against your Claude key — it just "
+                + "forgets between sessions. See worker/README.md to deploy."
+            )
+        }
+    }
+}
+
+// MARK: - Rows
+
+private struct AssistantNameRow: View {
+    @Binding var name: String
+
+    var body: some View {
+        HStack {
+            Image(systemName: "person.wave.2.fill")
+                .font(.system(size: 15))
+                .foregroundStyle(.white.opacity(0.5))
+                .frame(width: 24)
+            Text("Name")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.9))
+            Spacer()
+            TextField("Jarvis", text: $name)
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.white)
+                .font(.subheadline)
+                .autocorrectionDisabled()
+                .frame(maxWidth: 150)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+private struct WorkerURLRow: View {
+    @Binding var url: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Worker URL")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.5))
+            // Plain field rather than a SecureField — the URL isn't a secret,
+            // and masking it makes typos impossible to spot.
+            TextField("https://jarvis-brain.you.workers.dev", text: $url)
+                .font(.system(.subheadline, design: .monospaced))
+                .foregroundStyle(.white)
+                .tint(.cyan)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+        }
+    }
+}
+
+private struct WorkerTokenRow: View {
+    @Binding var token: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("Worker Token")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.white.opacity(0.5))
+            SecureField("bearer token", text: $token)
+                .textContentType(.password)
+                .font(.system(.subheadline, design: .monospaced))
+                .foregroundStyle(.white)
+                .tint(.cyan)
+        }
+    }
+}
+
+// MARK: - Shared Row Chrome
+//
+// Local copies of SettingsView's `glassDivider` / `settingsFooter`, which are
+// instance methods and so unreachable from these standalone types.
+
+private struct SettingsRowDivider: View {
+    var body: some View {
+        Divider()
+            .overlay(Color.white.opacity(0.08))
+            .padding(.vertical, 8)
+    }
+}
+
+private struct SettingsFooterText: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.35))
+            .padding(.top, 8)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let label: String
+    let icon: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.footnote)
+                    .foregroundStyle(isOn ? .white : .white.opacity(0.4))
+                    .frame(width: 20)
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+            }
+        }
+        .tint(.cyan)
     }
 }
