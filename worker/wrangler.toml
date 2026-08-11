@@ -3,11 +3,11 @@ main = "src/index.js"
 compatibility_date = "2026-01-15"
 
 # Conversation memory and long-term notes.
-# Create with:  wrangler kv namespace create JARVIS_KV
-# then paste the returned id below.
+# Namespace ids are not secrets — they're account-scoped handles, and this file
+# is meant to be committed.
 [[kv_namespaces]]
 binding = "JARVIS_KV"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "02327dc878fa4ceb9ed60ddcf7351857"
 
 [vars]
 # Model used for conversation. Sonnet is the latency/quality sweet spot for a
