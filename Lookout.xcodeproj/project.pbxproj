@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 60;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -117,16 +117,16 @@
 		B100000018 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B100000019 /* ScanDebugTrace.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanDebugTrace.swift; sourceTree = "<group>"; };
 		B100000099 /* Lookout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lookout.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B200000001 /* AssistantState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantState.swift"; sourceTree = "<group>"; };
-		B200000002 /* AudioSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AudioSessionCoordinator.swift"; sourceTree = "<group>"; };
-		B200000003 /* IntentRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IntentRouter.swift"; sourceTree = "<group>"; };
-		B200000004 /* BrainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BrainService.swift"; sourceTree = "<group>"; };
-		B200000005 /* WakeWordDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WakeWordDetector.swift"; sourceTree = "<group>"; };
-		B200000006 /* AssistantEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantEngine.swift"; sourceTree = "<group>"; };
-		B200000007 /* AssistantHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantHost.swift"; sourceTree = "<group>"; };
+		B200000001 /* AssistantState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantState.swift; sourceTree = "<group>"; };
+		B200000002 /* AudioSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionCoordinator.swift; sourceTree = "<group>"; };
+		B200000003 /* IntentRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntentRouter.swift; sourceTree = "<group>"; };
+		B200000004 /* BrainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrainService.swift; sourceTree = "<group>"; };
+		B200000005 /* WakeWordDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordDetector.swift; sourceTree = "<group>"; };
+		B200000006 /* AssistantEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantEngine.swift; sourceTree = "<group>"; };
+		B200000007 /* AssistantHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantHost.swift; sourceTree = "<group>"; };
 		B200000008 /* LookoutViewModel+Assistant.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LookoutViewModel+Assistant.swift"; sourceTree = "<group>"; };
-		B200000009 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OrbView.swift"; sourceTree = "<group>"; };
-		B200000010 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AssistantView.swift"; sourceTree = "<group>"; };
+		B200000009 /* OrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbView.swift; sourceTree = "<group>"; };
+		B200000010 /* AssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantView.swift; sourceTree = "<group>"; };
 		D200000001 /* TranslationSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslationSkill.swift; sourceTree = "<group>"; };
 		D200000002 /* FoodSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSkill.swift; sourceTree = "<group>"; };
 		D200000003 /* DrinkSkill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrinkSkill.swift; sourceTree = "<group>"; };
@@ -339,7 +339,7 @@
 			);
 			mainGroup = D100000001;
 			packageReferences = (
-				21B2B8D22F46218900EAD15C /* XCLocalSwiftPackageReference "../Downloads/meta-wearables-dat-ios-0.2.1" */,
+				216AD5BF302B70A800DE9983 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */,
 			);
 			productRefGroup = D100000099 /* Products */;
 			projectDirPath = "";
@@ -619,12 +619,16 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		21B2B8D22F46218900EAD15C /* XCLocalSwiftPackageReference "../Downloads/meta-wearables-dat-ios-0.2.1" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../Downloads/meta-wearables-dat-ios-0.2.1";
+/* Begin XCRemoteSwiftPackageReference section */
+		216AD5BF302B70A800DE9983 /* XCRemoteSwiftPackageReference "meta-wearables-dat-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/meta-wearables-dat-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.0;
+			};
 		};
-/* End XCLocalSwiftPackageReference section */
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		21B2B8D32F46218900EAD15C /* MWDATCamera */ = {
